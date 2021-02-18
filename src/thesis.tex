@@ -1,4 +1,5 @@
 \documentclass[master=eelt,masteroption=ei]{kulemt}
+\usepackage{listings}
 \setup{% Remove the "%" on the next line when using UTF-8 character encoding
   inputenc=utf8,
   title={The best master's thesis ever},
@@ -82,18 +83,12 @@
 \mainmatter
 
 \include{intro}
-\include{chap-1}
-\include{chap-2}
-% ... and so on until
-\include{chap-n}
-\include{conclusion}
+\include{literature_review}
 
 % If you have appendices:
 \appendixpage*          % if wanted
 \appendix
 \include{app-A}
-% ... and so on until
-\include{app-n}
 
 \backmatter
 % The bibliography comes after the appendices.

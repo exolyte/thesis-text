@@ -1,0 +1,74 @@
+\section{The Rust programming language}
+Rust is a relatively new programming language that aims to provide the high performance associated with other low-level programming languages such as C and C++ while simultaneously preventing a number of classes of bugs that typically arise due to the low-level resource management features necessary to achieve such high performance. Rust accomplishes this at compile time by statically checking if the source code satisfies the rules of Rust's strong ownership-based type system. Because these rules are conservative and might reject correct programs, Rust provides an \textit{unsafe} mode in which some of these rules do not need to be satisfied. Since this thesis is about the safety Rust provides, we only consider \textit{safe} Rust in this section.
+
+\subsection{Ownership}
+Central to Rust's resource management model is the concept of ownership. When a value gets created, ownership of that value will be assigned to a variable. This value stays valid until its owner goes out of scope after which it cannot be used anymore. Ownership of a value can be transferred to another variable, when this happens the value cannot be accessed anymore through the original variable.
+
+\subsection{Borrowing}
+\label{subsec:borrowing}
+A value can be borrowed by variables other than its owner, giving those variables temporarily the right to use the value. There are two types of borrows: a mutable borrow and an immutable (or shared) borrow. 
+A mutable borrow allows the borrowing variable to both read and mutate the contents of the value. To prevent multiple variables mutating the same value at the same time and to prevent variables from reading a value that is being altered, the owner temporarily loses its right to access or lend the value while a mutable borrow is in scope. As a result, only the borrowing variable is allowed to access the value while a mutable borrow exists.
+A shared borrow only allows a borrowing variable to read the contents of the value. While a shared borrow is in scope, the owner cannot mutate or mutably lend the value anymore. It is however allowed to read the value and immutably lend the value again. This means that an unlimited amount of shared borrows can read a value at the same time, but it cannot be mutated while any of those shared borrows exist.
+
+\subsection{Lifetimes}
+Section \ref{subsec:borrowing} explained the rules around borrowing, but did not explain how a borrow actually ends. For this, Rust has a concept called lifetimes. Every borrow has a lifetime which determines when the borrow is valid. In order to lighten the load on the programmer, the Rust compiler usually implicitly infers the lifetimes of borrows. However, in some situations it is necessary to explicitly annotate the Rust code with lifetimes. Listing \ref{code:lifetime_semantics} shows such a situation. In this example, the function \textit{longest} takes two string references as arguments and returns a reference to one of those. The function does not know which arguments it will be called with and thus cannot implicitly infer any information about their lifetimes. This also means it cannot give any guarantees about the lifetime of its return value. This is why it is necessary to link the arguments to the return value using lifetime parameter annotations. These annotations allow the function to tell its caller that the returned reference has the same lifetime as the arguments that were passed in.
+\begin{lstlisting}[language=C,frame=single,caption=Lifetime Example,label=code:lifetime_semantics]
+fn main() {
+    let string1 = String::from("abcd");
+    let string2 = "xyz";
+
+    let result = longest(string1.as_str(), string2);
+    println!("The longest string is {}", result);
+}
+
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+\end{lstlisting} %TODO reference Rust book (this is copied)
+
+\label{fig:lifetime_semantics}
+
+\subsection{Reborrowing}
+In section \ref{subsec:borrowing} we stated that a value could not be immutably borrowed while it was mutably borrowed. This is not entirely accurate as listing \ref{code:reborrow_semantics} shows. In the example we create a mutable value and borrow it mutably. We then pass the borrow into the \textit{reborrow} function. The reborrow function is able to create a shared borrow because the mutable borrow is not used until the lifetime of the shared borrow has already ended. Indeed, if we move the increment to the value one line up as in Listing \ref{code:reborrow_semantics_wrong}, the Rust compiler returns an error because the shared borrow still gets used after the increment. This reborrow feature adds a lot of expressivity to Rust's fairly strict semantics and will have a major impact on our design choices for borrowed capabilities.
+
+\noindent
+\begin{tabular}{p{6.65cm} p{6.65cm}}
+    \begin{lstlisting}[language=C,frame=single,caption=Reborrow Example,label=code:reborrow_semantics]
+fn main() {
+    let mut x = 5;
+    let m = &mut x;
+    reborrow(m);
+}
+
+fn reborrow(m: &mut i64) {
+    let s = &(*m);
+    println!("{}", s);
+    *m += 1;
+}
+    \end{lstlisting}
+
+    &
+
+    \begin{lstlisting}[language=C,frame=single,caption=Wrong Example,label=code:reborrow_semantics_wrong]
+fn main() {
+    let mut x = 5;
+    let m = &mut x;
+    reborrow(m);
+}
+
+fn reborrow(m: &mut i64) {
+    let s = &(*m);
+    *m += 1;
+    println!("{}", s);
+}
+    \end{lstlisting}
+\end{tabular}
+
+\subsection{Safety}
+Because the compiler automatically deallocates values after their owner goes out of scope, the programmer cannot make typical deallocation related mistakes such as \textit{double free} or \textit{invalid free}. An owner can only go out of scope when no more borrows exist, meaning that a \textit{use after free} bug is impossible. The borrow system eliminates the necessity of using raw pointers and prevents problems relating to null pointers or buggy pointer arithmetic. It also prevents simultaneous read and write access to a value, making data races impossible.
+
+%TODO ref rustbelt and rust book
