@@ -5,16 +5,68 @@
   year =      1995,
   note =      {ISBN-13: 978-0345391803}}
 
-@Book{pratchett06:_good_omens,
-  author =    {Pratchett, Terry and Gaiman, Neil},
-  title =     {Good Omens:
-               \emph{The Nice and Accurate Prophecies of Agnes Nutter, Witch}},
-  publisher = {HarperTorch (reprint)},
-  year =      2006,
-  note =      {ISBN-13: 978-0060853983}}
+@TechReport{UCAM-CL-TR-951,
+  author =	 {Watson, Robert N. M. and Neumann, Peter G. and Woodruff,
+          	  Jonathan and Roe, Michael and Almatary, Hesham and
+          	  Anderson, Jonathan and Baldwin, John and Barnes, Graeme and
+          	  Chisnall, David and Clarke, Jessica and Davis, Brooks and
+          	  Eisen, Lee and Filardo, Nathaniel Wesley and Grisenthwaite,
+          	  Richard and Joannou, Alexandre and Laurie, Ben and
+          	  Markettos, A. Theodore and Moore, Simon W. and Murdoch,
+          	  Steven J. and Nienhuis, Kyndylan and Norton, Robert and
+          	  Richardson, Alexander and Rugg, Peter and Sewell, Peter and
+          	  Son, Stacey and Xia, Hongyan},
+  title = 	 {{Capability Hardware Enhanced RISC Instructions: CHERI
+         	   Instruction-Set Architecture (Version 8)}},
+  year = 	 2020,
+  month = 	 oct,
+  url = 	 {https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-951.pdf},
+  institution =  {University of Cambridge, Computer Laboratory},
+  number = 	 {UCAM-CL-TR-951}
+}
 
-@Misc{wiki,
-  author =       {Wikipedia},
-  title =        {Thesis or dissertation},
-  howpublished = {URL: \url{http://en.wikipedia.org/wiki/Thesis_or_dissertation},
-                  last checked on 2010-01-07}}
+@article{10.1145/3290332,
+author = {Skorstengaard, Lau and Devriese, Dominique and Birkedal, Lars},
+title = {StkTokens: Enforcing Well-Bracketed Control Flow and Stack Encapsulation Using Linear Capabilities},
+year = {2019},
+issue_date = {January 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {POPL},
+url = {https://doi.org/10.1145/3290332},
+doi = {10.1145/3290332},
+abstract = {We propose and study StkTokens: a new calling convention that provably enforces well-bracketed control flow and local state encapsulation on a capability machine. The calling convention is based on linear capabilities: a type of capabilities that are prevented from being duplicated by the hardware. In addition to designing and formalizing this new calling convention, we also contribute a new way to formalize and prove that it effectively enforces well-bracketed control flow and local state encapsulation using what we call a fully abstract overlay semantics.},
+journal = {Proc. ACM Program. Lang.},
+month = jan,
+articleno = {19},
+numpages = {28},
+keywords = {stack frame encapsulation, secure compilation, well-bracketed control flow, fully abstract overlay semantics, capability machines, linear capabilities, fully abstract compilation}
+}
+
+@article{10.1145/3341688,
+author = {Van Strydonck, Thomas and Piessens, Frank and Devriese, Dominique},
+title = {Linear Capabilities for Fully Abstract Compilation of Separation-Logic-Verified Code},
+year = {2019},
+issue_date = {August 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {ICFP},
+url = {https://doi.org/10.1145/3341688},
+doi = {10.1145/3341688},
+abstract = {Separation logic is a powerful program logic for the static modular verification of imperative programs. However, dynamic checking of separation logic contracts on the boundaries between verified and untrusted modules is hard, because it requires one to enforce (among other things) that outcalls from a verified to an untrusted module do not access memory resources currently owned by the verified module.  This paper proposes an approach to dynamic contract checking by relying on support for capabilities, a well-studied form of unforgeable memory pointers that enables fine-grained, efficient memory access control. More specifically, we rely on a form of capabilities called linear capabilities for which the hardware enforces that they cannot be copied.  We formalize our approach as a fully abstract compiler from a statically verified source language to an unverified target language with support for linear capabilities. The key insight behind our compiler is that memory resources described by spatial separation logic predicates can be represented at run time by linear capabilities. The compiler is separation-logic-proof-directed: it uses the separation logic proof of the source program to determine how memory accesses in the source program should be compiled to linear capability accesses in the target program.  The full abstraction property of the compiler essentially guarantees that compiled verified modules can interact with untrusted target language modules as if they were compiled from verified code as well.},
+journal = {Proc. ACM Program. Lang.},
+month = jul,
+articleno = {84},
+numpages = {29},
+keywords = {capabilities, separation logic, verification, fully abstract compilation}
+}
+
+@article{Watson2015CHERIAH,
+  title={CHERI: A Hybrid Capability-System Architecture for Scalable Software Compartmentalization},
+  author={R. Watson and J. Woodruff and P. Neumann and S. Moore and J. Anderson and D. Chisnall and Nirav H. Dave and B. Davis and Khilan Gudka and B. Laurie and Steven J. Murdoch and R. Norton and M. Roe and S. Son and Munraj Vadera},
+  journal={2015 IEEE Symposium on Security and Privacy},
+  year={2015},
+  pages={20-37}
+}
