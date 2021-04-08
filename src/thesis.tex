@@ -1,4 +1,4 @@
-\documentclass[master=cws,masteroption=vs]{kulemt}
+\documentclass[master=ecws,masteroption=ss]{kulemt}
 \usepackage{listings}
 \usepackage{bytefield}
 \usepackage{color}
@@ -63,9 +63,10 @@
 \begin{flushleft}
   \renewcommand{\arraystretch}{1.1}
   \begin{tabularx}{\textwidth}{@{}p{12mm}X@{}}
-    LoG   & Laplacian-of-Gaussian \\
-    MSE   & Mean Square error \\
-    PSNR  & Peak Signal-to-Noise ratio \\
+    ISA   & Instruction Set Architecture \\
+    OBS   & Ownership and Borrow System \\
+    PCC   & Program Counter Capability \\
+    DDC   & Default Data Capability \\
   \end{tabularx}
 \end{flushleft}
 \section*{Symbols}
@@ -86,6 +87,11 @@
 
 \include{intro}
 \include{literature_review}
+\include{designs}
+\include{sail_implementation}
+\include{assembler_implementation}
+\include{evaluation}
+\include{conclusion}
 
 % If you have appendices:
 \appendixpage*          % if wanted

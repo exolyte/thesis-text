@@ -1,0 +1,44 @@
+\chapter{Designs}
+As mentioned in chapter \ref{cha:intro}, the goal of this thesis is to provide support for the Rust safety guarantees on the hardware level as an extension of the CHERI architecture. Several different design directions were explored, each with their own set of tradeoffs to be made. In this chapter we explore these design directions along with their advantages and disadvantages.
+%TODO: hardware level -> architectural level?
+
+\section{Rust Borrow Invariants}
+In this section we will give a more in-depth explanation of what the Rust safety guarantees are in the form of a set of invariants. The designs in the rest of this chapter will have to conform to these invariants.
+Kan et al. \cite{Kan2018AnEO} identify a set of five invariants that must hold when borrowing in Rust. These invariants that they refer to as the ownership and borrowing system (OBS) invariants are listed in figure \ref{fig:obsinvariants}. The OBS invariants ensure that each reference points to a valid block of memory and that each valid block can either be accessed through multiple immutable references or one mutable reference.
+
+\begin{figure}[h]
+\centering
+\begin{enumerate}
+    \item \textit{Unique owner invariant}: Each block has a unique owner.
+    \item \textit{Lifetime inclusion invariant}: If $x$ borrows or reborrows $y$ then the lifetime of $x$ should always be within the lifetime of $y$ in order to avoid dangling pointers.
+    \item \textit{Lifetime disjoint invariant}: There are \textit{no} two references to the same referent such that their lifetimes intersect and one of them is a mutable reference.
+    \item \textit{Writing permission invariant}: If $x$ borrows or reborrows $y$ immutably then the writing permission of $y$ should be disabled until the end of $x$'s lifetime.
+    \item \textit{Reading and writing permissions invariant}: If $x$ borrows or reborrows $y$ mutably then both the reading and writing permissions of $y$ should be disabled until the end of $x$'s lifetime.
+\end{enumerate}
+\caption{The five OBS invariants.\cite{Kan2018AnEO}}
+\label{fig:obsinvariants}
+\end{figure}
+
+\section{Design Overview}
+In all of the following designs linear capabilities will be used as a starting point. Linear capabilities correspond naturally with Rust's ownership system where owners of a value can only be moved, not copied, just like linear capabilities. Implementing Rust owner variables as linear capabilities allows us to use this property to easily guarantee the \textit{unique owner invariant}: if an owner is implemented as a linear capability, it cannot be copied and is thus unique. The following designs differ in their method of implementing borrowing and guaranteeing the rest of the OBS invariants.
+%TODO: mention the design that was eventually selected
+
+\subsection{Tree Structure with Reference Counting}
+In this design, every capability has its own unique id and also has a field that holds its parents' id. A parent id of zero signifies that the capability does not have a parent and thus is an owner capability. When a capability gets borrowed, the new capability derives its access rights from the parent, it gets its own unique id and it stores its parent's id. The new capability is always linear as well. In the case of a mutable borrow, a \textit{has\_been\_mut\_borrowed} bit gets set on the parent that signifies that a mutable borrow of this capability exists which means that it cannot be borrowed again and it cannot be used for reading or writing. In the case of an immutable borrow, the \textit{borrow\_refcount} field on the parent gets incremented. This field holds the amount of immutable borrows that exist and the capability loses writing permissions if this field is not zero. The \textit{borrow\_refcount} field is the reason that immutable borrows also need to be linear since a copy of a child would result in the \textit{borrow\_refcount} field on the parent being incorrect.
+Borrows can be chained without any limits, resulting in a tree-like structure with a lot of possible branches and leaves in the case of immutable borrows, or a single chain of branches with a single leaf in the case of mutable borrows. When an application is done with a borrow, it can return this borrow to its parent. The parent id field on the child allows the hardware to check whether this operation is valid by comparing it with the id of the parent. If the operation is valid, the child capability is destroyed and either the \textit{has\_been\_mut\_borrowed} bit is unset or the \textit{borrow\_refcount} field is decremented, depending on whether the returned capability was a mutable or immutable borrow. A capability can only be returned to its parent if its \textit{has\_been\_mut\_borrowed} bit is unset and its \textit{borrow\_refcount} field is zero.
+
+\subsubsection{OBS Invariants}
+\begin{enumerate}
+    \item \textit{Unique owner invariant}: holds as a result of owner capabilities being linear.
+    \item \textit{Lifetime inclusion invariant}: holds as a result of capabilities not being able to be returned to their parent as long as they have children themselves.
+    \item \textit{Lifetime disjoint invariant}: holds as a result of capabilities being able to mutably borrowed only once.
+    \item \textit{Writing permission invariant}: holds as a result of capabilities losing writing permission when they are immutably borrowed.
+    \item \textit{Reading and writing permissions invariant}: holds as a result of capabilities losing reading and writing permissions when they are mutably borrowed.
+\end{enumerate}
+
+\subsubsection{Advantages}
+The main advantage of this design is that it is conceptually simple. Relationships between capabiltiies are clearly defined through the parent-child structure which makes it easy to ensure children don't outlive their parents.
+
+\subsubsection{Disadvantages}
+The major disadvantages of this design are the amount of bits required and the deviations from Rust semantics. Capabilities require the bits to store their own id, their parent's id, the \textit{borrow\_refcount} field and the \textit{has\_been\_mut\_borrowed} field. Since every capability requires its own unique id, the id and parent id fields would need to be large enough in order to support a large amount of capabilities. This disadvantage prevents this design from being implemented in CHERI since the amount of unassigned bits in CHERI is very low.
+The design diverges from Rust semantics in a few different ways. The first is that it is not possible to copy immutable borrows in this design, while this is allowed in Rust. The second is that it is not possible to have multiple borrows under the same lifetime. This design does not have an independent representation of lifetime which means that each capability implicitely has its own lifetime. In contrast to this limitation, in Rust it is possible to define that multiple arguments to a function have the same lifetime.
