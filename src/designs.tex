@@ -1,28 +1,45 @@
 \chapter{Designs}
-As mentioned in chapter \ref{cha:intro}, the goal of this thesis is to provide support for the Rust safety guarantees on the hardware level as an extension of the CHERI architecture. Several different design directions were explored, each with their own set of tradeoffs to be made. In this chapter we explore these design directions along with their advantages and disadvantages.
-%TODO: hardware level -> architectural level?
+As mentioned in chapter \ref{cha:intro}, the goal of this thesis is to provide support for the Rust safety guarantees on the hardware level as an extension of the CHERI architecture. Several different design directions were explored, each with their own set of tradeoffs to be made. In this chapter we give an overview of the main design and its tradeoffs as well as an argument for its correctness by suggesting how the OBS invariants introduced in section \ref{sec:obsinvariants} can be held. Following that, we give an explanation of the other explored directions along with the reasons these directions were not chosen.
 
-\section{Rust Borrow Invariants}
-In this section we will give a more in-depth explanation of what the Rust safety guarantees are in the form of a set of invariants. The designs in the rest of this chapter will have to conform to these invariants.
-Kan et al. \cite{Kan2018AnEO} identify a set of five invariants that must hold when borrowing in Rust. These invariants that they refer to as the ownership and borrowing system (OBS) invariants are listed in figure \ref{fig:obsinvariants}. The OBS invariants ensure that each reference points to a valid block of memory and that each valid block can either be accessed through multiple immutable references or one mutable reference.
+\section{Main Design Overview}
+\label{sec:maindesign}
+In this design linear capabilities will be used as a starting point. Linear capabilities correspond naturally with Rust's linear ownership system where owners of a value can only be moved, not copied. Implementing Rust owner variables as linear capabilities allows us to use this property to easily guarantee the \textit{unique owner invariant} of the OBS invariants introduced in section \ref{sec:obsinvariants}: if an owner is implemented as a linear capability, it cannot be copied and is thus unique.
 
-\begin{figure}[h]
-\centering
+To represent lifetimes, the design uses a new type of capability that stores a unique lifetime id. This capability acts as proof that a lifetime is either active or inactive during the execution of the section of code that owns the capability. These new capabilities are called lifetime tokens and can be passed around in the same way as any other capability. A lifetime token can either be alive or dead, indicated by a bit on the capability. A living lifetime token is linear and can be used to borrow a capability under that lifetime id or dereference a borrowed capability with that lifetime id. The linearity of living lifetime tokens ensures that living lifetime tokens cannot be copied and held for use after the lifetime has ended. An irreversible operation can be performed on the living lifetime token to kill it. This results in a dead lifetime token. Dead lifetime tokens lose their linearity and can be freely passed around as proof that the lifetime id associated with them has ended. Both living and dead lifetime tokens are sealed which means they can only be manipulated as described in this section.
+%TODO reference rust belt lifetime tokens
+
+Borrowing a resource requires an owner capability and a living lifetime token. The borrow operation stores the owner capability in a borrow table, exchanges it for an index token and produces the borrowed capability. The index token is a linear sealed capability that represents the capability that was stored away. This index token can later be used retrieve the stored capability from the borrow table through an operation that requires both the index token and a corresponding dead lifetime token. The new borrowed capability is a copy of the original owner capability with some alterations depending on whether the borrow was mutable or immutable. Most importantly, mutable borrows retain their write permissions and stay linear while immutable borrows lose their write permissions and linearity so they can be freely copied. Naturally, if the owner capability does not have write permissions or is not linear, making a mutable borrow is impossible. Borrowed capabilities also hold their corresponding lifetime id.
+
+Borrowed capabilities can only be dereferenced when used together with their corresponding living lifetime tokens. This ensures that borrowed capabilities can never be used after the lifetime token has been killed.
+
+Lifetime tokens can be split into multiple fractions to safely support concurrent access to the same resource which is useful in the case of multiple copies of an immutable borrow. Fractured lifetime tokens cannot be killed. This ensures that a lifetime is not dead and alive at the same time. The operation that splits lifetime tokens consumes an existing lifetime token as an operand and produces two new lifetime tokens with the same lifetime id, but different fractions. These fractured lifetime token can be split again until they have reached the smallest possible fraction. Two identical fractured lifetime tokens can be merged again through an operation. Merging all of the existing fractured lifetime tokens is a requirement to make the lifetime token whole again and thus a requirement to kill the lifetime token and retrieve capabilities that were borrowed under it.
+
+To support reborrowing, this design has a concept of lifetime hierarchies. Each lifetime token holds the id's of its parent and child --- if they have them. Lifetime tokens can be created as the sublifetime of another lifetime token. This sets the child id on the parent to the newly created lifetime id and the parent id on the new token to the lifetime id of the parent. Lifetime tokens cannot be killed while they have a child. In order to be able to kill a parent lifetime token or make another sublifetime of it, its current child must first be removed through an operation that requires the parent lifetime token and a dead lifetime token of the child. This ensures that sublifetimes are always shorter than the parent lifetimes.
+
+Borrowed capabilties can be reborrowed through the same operation used to borrow owner capabilities. The main difference is that in this case, the provided lifetime token must have a parent id that is equal to the lifetime id held by the capability that is being reborrowed. Because sublifetimes cannot outlive their parents, it is ensured that reborrows cannot be used for longer than the capability that was reborrowed.
+
+\subsection{Advantages}
+The main advantage of this design is that it mimicks the Rust semantics fairly closely and that it is relatively easy to fit into the CHERI architecture. While some fields of the CHERI capability layout have to be partially repurposed, this design can be implemented without using additional bits and without making deep changes to the CHERI architecture.
+
+\subsection{Disadvantages}
+\label{sec:designdisadvantages}
+Issues with the design pertain to differences with Rust semantics. In Rust when an owner is immutably borrowed, the owner can still be used to read, however, this is impossible if the owner is locked away. A solution would be to borrow the owner for local use and then reborrow under a sublifetime. Another issue is that in this design reborrows can only occur under direct lifetime children while in Rust any lifetime that is contained within another lifetime can be used to reborrow. This can also be solved by inserting extra borrows, at the cost of performance.
+
+Another concern is the presence of operations that require writing to multiple registers which might be hard to implement in microarchitecture. We keep this limitation in mind, but do not attempt to mitigate it.
+
+\subsection{OBS Invariants}
 \begin{enumerate}
-    \item \textit{Unique owner invariant}: Each block has a unique owner.
-    \item \textit{Lifetime inclusion invariant}: If $x$ borrows or reborrows $y$ then the lifetime of $x$ should always be within the lifetime of $y$ in order to avoid dangling pointers.
-    \item \textit{Lifetime disjoint invariant}: There are \textit{no} two references to the same referent such that their lifetimes intersect and one of them is a mutable reference.
-    \item \textit{Writing permission invariant}: If $x$ borrows or reborrows $y$ immutably then the writing permission of $y$ should be disabled until the end of $x$'s lifetime.
-    \item \textit{Reading and writing permissions invariant}: If $x$ borrows or reborrows $y$ mutably then both the reading and writing permissions of $y$ should be disabled until the end of $x$'s lifetime.
+    \item \textit{Unique owner invariant}: holds as a result of owner capabilities being linear.
+    \item \textit{Lifetime inclusion invariant}: holds as a result of capabilities not being able to be retrieved from the borrow table unless a dead lifetime token is presented.
+    \item \textit{Lifetime disjoint invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any further borrows.
+    \item \textit{Writing permission invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any dereferences.
+    \item \textit{Reading and writing permissions invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any dereferences.
 \end{enumerate}
-\caption{The five OBS invariants.\cite{Kan2018AnEO}}
-\label{fig:obsinvariants}
-\end{figure}
 
-\section{Design Overview}
-In all of the following designs linear capabilities will be used as a starting point. Linear capabilities correspond naturally with Rust's ownership system where owners of a value can only be moved, not copied, just like linear capabilities. Implementing Rust owner variables as linear capabilities allows us to use this property to easily guarantee the \textit{unique owner invariant}: if an owner is implemented as a linear capability, it cannot be copied and is thus unique. The following designs differ in their method of implementing borrowing and guaranteeing the rest of the OBS invariants.
-%TODO: mention the design that was eventually selected
-
+\section{Alternative Designs}
+%TODO variation on main design
+%TODO indirection design
+%TODO repeat part about linear owner capabilities
 \subsection{Tree Structure with Reference Counting}
 In this design, every capability has its own unique id and also has a field that holds its parents' id. A parent id of zero signifies that the capability does not have a parent and thus is an owner capability. When a capability gets borrowed, the new capability derives its access rights from the parent, it gets its own unique id and it stores its parent's id. The new capability is always linear as well. In the case of a mutable borrow, a \textit{has\_been\_mut\_borrowed} bit gets set on the parent that signifies that a mutable borrow of this capability exists which means that it cannot be borrowed again and it cannot be used for reading or writing. In the case of an immutable borrow, the \textit{borrow\_refcount} field on the parent gets incremented. This field holds the amount of immutable borrows that exist and the capability loses writing permissions if this field is not zero. The \textit{borrow\_refcount} field is the reason that immutable borrows also need to be linear since a copy of a child would result in the \textit{borrow\_refcount} field on the parent being incorrect.
 Borrows can be chained without any limits, resulting in a tree-like structure with a lot of possible branches and leaves in the case of immutable borrows, or a single chain of branches with a single leaf in the case of mutable borrows. When an application is done with a borrow, it can return this borrow to its parent. The parent id field on the child allows the hardware to check whether this operation is valid by comparing it with the id of the parent. If the operation is valid, the child capability is destroyed and either the \textit{has\_been\_mut\_borrowed} bit is unset or the \textit{borrow\_refcount} field is decremented, depending on whether the returned capability was a mutable or immutable borrow. A capability can only be returned to its parent if its \textit{has\_been\_mut\_borrowed} bit is unset and its \textit{borrow\_refcount} field is zero.
