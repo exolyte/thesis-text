@@ -68,6 +68,24 @@ fn reborrow(m: &mut i64) {
     \end{lstlisting}
 \end{tabular}
 
+\subsection{Rust Borrow Invariants}
+\label{sec:obsinvariants}
+In this section we will give a more in-depth explanation of what the Rust safety guarantees are in the form of a set of invariants.
+Kan et al. \cite{Kan2018AnEO} identify a set of five invariants that must hold when borrowing in Rust. These invariants that they refer to as the ownership and borrowing system (OBS) invariants are listed in figure \ref{fig:obsinvariants}. The OBS invariants ensure that each reference points to a valid block of memory and that each valid block can either be accessed through multiple immutable references or one mutable reference.
+
+\begin{figure}[h]
+\centering
+\begin{enumerate}
+    \item \textit{Unique owner invariant}: Each block has a unique owner.
+    \item \textit{Lifetime inclusion invariant}: If $x$ borrows or reborrows $y$ then the lifetime of $x$ should always be within the lifetime of $y$ in order to avoid dangling pointers.
+    \item \textit{Lifetime disjoint invariant}: There are \textit{no} two references to the same referent such that their lifetimes intersect and one of them is a mutable reference.
+    \item \textit{Writing permission invariant}: If $x$ borrows or reborrows $y$ immutably then the writing permission of $y$ should be disabled until the end of $x$'s lifetime.
+    \item \textit{Reading and writing permissions invariant}: If $x$ borrows or reborrows $y$ mutably then both the reading and writing permissions of $y$ should be disabled until the end of $x$'s lifetime.
+\end{enumerate}
+\caption{The five OBS invariants.\cite{Kan2018AnEO}}
+\label{fig:obsinvariants}
+\end{figure}
+
 \subsection{Safety}
 Because the compiler automatically deallocates values after their owner goes out of scope, the programmer cannot make typical deallocation related mistakes such as \textit{double free} or \textit{invalid free}. An owner can only go out of scope when no more borrows exist, meaning that a \textit{use after free} bug is impossible. The borrow system eliminates the necessity of using raw pointers and prevents problems relating to null pointers or buggy pointer arithmetic. It also prevents simultaneous read and write access to a value, making data races impossible.
 

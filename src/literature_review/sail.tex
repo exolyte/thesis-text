@@ -1,0 +1,15 @@
+\section{RISC-V \& SAIL}
+RISC-V is an open RISC ISA created by researchers at Berkeley University. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling.
+%TODO instruction type categories?
+%TODO explain basic instruction/opcode structure
+%TODO explain opcodes used in our examples?
+%TODO introduction to llvm compiler?
+%TODO register abbrevation (C1 for capability register, X1 for integer register)
+%TODO explain X0 and C0 always being NULL
+
+SAIL is an ISA specification language that can be used to formally describe the semantics of the instructions of an ISA. SAIL models for several different ISA's such as RISC-V, CHERI-RISC-V and ARM have been implemented. SAIL models have a variety of uses, including generating documentation, constructing an emulator and formal reasoning about the ISA.
+
+A SAIL model consists of a series of instruction definitions, code describing their functionality and a mapping between instruction definitions, binary encodings and mnemonic opcodes.
+
+%TODO SAIL types
+%TODO insert example SAIL code
