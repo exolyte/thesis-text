@@ -16,6 +16,8 @@ Figure \ref{fig:linear_capability} shows the layout of a 128-bit CHERI-RISC-V ca
 \label{fig:linear_capability}
 \end{figure}
 
+%TODO nieuwe fields in rood
+
 When the \textit{linear} bit on a capability is set, it cannot be copied in any way. This restriction has influence on a large amount of instructions in the ISA. We describe the necessary modifications to existing instructions as well as the new instructions that were made in the sections below. We identify four different classes of instructions that require attention. Instructions that modify capabilities, instructions that move capbilities, instructions that load and store capabilities and instructions related to the management of linear capabilities. The encoding of the newly added instructions will be discussed in section \ref{sec:sailencoding}, together with the encoding of the instructions added for borrowed capabilities.
 
 \subsection{Instructions with Modification Semantics}
@@ -172,7 +174,7 @@ Figure \ref{fig:lifetime_token} shows the layout of a lifetime token.
 \label{fig:lifetime_token}
 \end{figure}
 
-The \textit{permissions} field is unaltered from the regular capability layout, but since none of the permissions are relevant for lifetime tokens, all permissions are set to zero.
+The \textit{permissions} field is unaltered from the regular capability layout. The only permission that is relevant to lifetime tokens is the \textit{Global} permission which allows lifetime tokens to be stored more easily. All other permissions are not set.
 
 The \textit{linear} field serves the same purpose as it does in linear capabilities, but it also indicates whether a lifetime token is alive or dead. Alive lifetime tokens always have their \textit{linear} bit set, while dead lifetime tokens never do.
 
@@ -185,6 +187,10 @@ The $I_E$ bit is always set to 0. This allows us to use the full width of the \t
 The \textit{T} field is not used in lifetime tokens and is set to zero.
 
 The previous \textit{a} field is split up into three different fields to hold a lifetime token's own lifetime id, the id of its parent and the id of its child. Because each of these fields is 18 bits wide, the bottom word of a capability contains 10 unassigned bits. While the necessity of a lifetime token holding its own id is clear, the need for fields to store the parent and child ids might be less obvious. Reborrowing a capability under a new lifetime requires the parent id of the new lifetime to be the lifetime id that the capability was originally borrowed under. This can only be checked if a lifetime token holds the id of its parent. The necessity of the \textit{child id} field arises from the restriction that lifetime tokens cannot be killed while they have a child. This means that there needs to be a way to determine whether a lifetime token has a child as well as a way to modify the lifetime token when its child lifetime is dead. It might seem possible to use a single bit to indicate whether a specified lifetime token has a child and clear that bit through an operation that uses a dead lifetime token with the \textit{parent id} field set to the lifetime id of the specified lifetime token. However, since lifetime tokens can have multiple children in succession, using one bit to track whether a lifetime token has a child is unsufficient as this would allow old children to be used to remove the bit. Storing the entire lifetime id of the child lifetime in the \textit{child id} field solves this problem.
+
+
+%TODO mention dynamic borrowing scheme
+%TODO mention that parent id would be avoidable, but would require new instructions
 
 \subsubsection{Index Tokens}
 Figure \ref{fig:index_token} shows the layout of an index token.
@@ -201,7 +207,7 @@ Figure \ref{fig:index_token} shows the layout of an index token.
 \label{fig:index_token}
 \end{figure}
 
-Like with lifetime tokens, the \textit{permissions} field is unmodified, but because there is no use for the permissions, every permission is set to zero.
+Like with lifetime tokens, the \textit{permissions} field is unmodified and the only permission that is set is the \textit{Global} permission.
 
 The \textit{linear} bit is unaltered from the regular capability layout. Because index tokens should only be used to retrieve a stored capability once, they are always linear and are consumed in the retrieval operation.
 

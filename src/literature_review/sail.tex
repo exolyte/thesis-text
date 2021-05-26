@@ -1,15 +1,91 @@
 \section{RISC-V \& SAIL}
-RISC-V is an open RISC ISA created by researchers at Berkeley University. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling.
-%TODO instruction type categories?
-%TODO explain basic instruction/opcode structure
+RISC-V is an open RISC ISA created by researchers at Berkeley University. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling. In this thesis we use CHERI's extension of the RISC-V ISA, called CHERI-RISC-V.
+
+\subsection{Instruction layout}
+RISC-V offers multiple instruction types that differ in the way their bits are interpreted.
+In this thesis we will only use R-type instructions, shown in figure \ref{fig:rtypeinst}.
+
+%TODO reference RISC-V ISA spec
+
+\begin{figure}[h]
+\centering
+\definecolor{lightgray}{gray}{0.8}
+\begin{bytefield}[endianness=big, bitwidth=1em]{32}
+    \bitheader{32,25,24,20,19,15,14,12,11,7,6,0} \\
+    \bitbox{7}{funct7} & \bitbox{5}{rs2} & \bitbox{5}{rs1} & \bitbox{3}{funct3} & \bitbox{5}{rd} & \bitbox{7}{opcode} \\
+\end{bytefield}
+\caption{R-type RISC-V instruction.}
+\label{fig:rtypeinst}
+\end{figure}
+
+An R-type instruction consists of 6 different fields, each with their own meaning. The operation code (\textit{opcode}) field is 7 bits wide and specifies the class of instructions to be used. All of the instructions introduced in this thesis will use the CHERI-specific opcode of \textit{1011011} which is one of the opcodes that RISC-V reserves for extension usage. The exact instruction to execute is further indicated by the \textit{funct3} and \textit{funct7} fields which are 3 and 7 bits wide respectively. The other three fields, \textit{rd}, \textit{rs1} and \textit{rs2} specify which registers should be used in the instruction. \textit{rd} indicates the destination register while \textit{rs1} and \textit{rs2} indicate the first and second source registers.
+In CHERI, the \textit{rs2} field is also used as an extra funct field for some instructions, called \textit{funct5}.
+Because CHERI has a distinction between integer and capability registers, CHERI introduces the \textit{cd}, \textit{cs1} and \textit{cs2} notation.
+The \textit{c} registers refer to capability registers while \textit{r} registers refer to integer registers.
+This distinction is merely cosmetical as the underlying bits just represent a register number and are agnostic to whether the field is interpreted as an integer or capability register.
+
+\subsection{Registers}
+The base RISC-V ISA provides 32 integer registers that are named by an x in front of their number.
+Reading from the \textit{x0} register always results in reading zero, regardless of what was written to the register.
+This means that writing to \textit{x0} has no effect and can be used as a no-operation (NOP).
+
+CHERI-RISC-V introduces another 32 capability registers, named \textit{c0} through \textit{c31} which may or may not be shared with the integer registers.
+As mentioned before, in this thesis we work with a shared register file which means that there are only 32 registers and each register can be interpreted as an integer or as a capability register.
+Like \textit{x0}, \textit{c0} contains a fixed value which is called the null capability, which has most of its fields set to zero.
+
+
+\subsection{LLVM}
+While several compilers that target RISC-V exist, the only compiler that targets CHERI-RISC-V is CHERI's fork of the LLVM project.
+The LLVM project offers a large amount of tools related to compiling such as a compiler for several programming languages, a linker, an assembler, a disassembler and much more.
+In this thesis we will extend CHERI's fork of the LLVM project to support the new instructions we introduce and we will use LLVM's assembler to turn assembly source files into executable binary files.
+%TODO refer to cheri-llvm repo
+
+The code snippet below shows the instruction definition for the CHERI function \textit{CGetPerm} and the template used by that definition.
+The template accepts a 5 bit argument \textit{funct5}, a string with the instruction name and an indication whether the used registers are integer or capability register for which defaults are provided.
+These arguments are then mapped to an R-type instruction with a fixed \textit{funct7} field of 0x7f, an \textit{rs2} field with the provided \textit{funct5} argument, a fixed \textit{funct3} field of 0, a fixed opcode field with the CHERI-specific opcode of \textit{1011011} and variable \textit{rd} and \textit{rs1} fields depending on the registers that are used for the instruction.
+The \textit{CGetPerm} instruction provides the template with a \textit{funct5} field of 0, an instruction string of \textit{cgetperm} and keeps the default register interpretation of an integer destination register and a capability source register.
+While other instruction templates exist, they work in a similar way so we won't cover them in detail.
+
+\begin{verbatim}
+class Cheri_r<bits<5> funct5, string opcodestr, RegisterClass rdClass=GPR,
+              RegisterClass rs1Class=GPCR>
+    : RVInstCheriSrcDst<0x7f, funct5, 0, OPC_CHERI, (outs rdClass:$rd),
+                        (ins rs1Class:$rs1), opcodestr, "$rd, $rs1">;
+
+def CGetPerm : Cheri_r<0x0, "cgetperm">;
+\end{verbatim}
+%TODO format
+
 %TODO explain opcodes used in our examples?
-%TODO introduction to llvm compiler?
-%TODO register abbrevation (C1 for capability register, X1 for integer register)
-%TODO explain X0 and C0 always being NULL
 
-SAIL is an ISA specification language that can be used to formally describe the semantics of the instructions of an ISA. SAIL models for several different ISA's such as RISC-V, CHERI-RISC-V and ARM have been implemented. SAIL models have a variety of uses, including generating documentation, constructing an emulator and formal reasoning about the ISA.
+\subsection{Sail}
+Sail is an ISA specification language that can be used to formally describe the semantics of the instructions of an ISA. Sail models for several different ISA's such as RISC-V, CHERI-RISC-V and ARM have been implemented. SAIL models have a variety of additional uses such as generating documentation, constructing an emulator and formal reasoning about the ISA.
+A Sail model consists of a series of instruction definitions, code describing their functionality and a mapping between instruction definitions, binary encodings and mnemonic opcodes.
+Because Sail does not offer an assembler, we need to use an other assembler as mentioned before.
+In this thesis we will extend the CHERI-RISC-V Sail model and will use the emulator to test a prototype of our design.
 
-A SAIL model consists of a series of instruction definitions, code describing their functionality and a mapping between instruction definitions, binary encodings and mnemonic opcodes.
+The code snippet below shows the Sail definition for the \textit{CSetFlags} instruction.
+First the instruction name as well as the arguments to the instruction function are described.
+Next is the function that describes what happens when \textit{CSetFlags} is executed.
+The function definition shows that a capability destination register, a capability source register and an integer source register are used.
+The function starts by reading the values in the source registers.
+The C(regidx) function can be used to read from or write to the capability register with the specified register index while the X(regidx) function does the same for integer registers.
+Then the function inspects some of the fields from the given source capability and throws an exception if those fields contain specific values.
+If an exception is not thrown, the function creates a new capability based on the values in the source registers and writes that new capability to the destination register.
 
-%TODO SAIL types
-%TODO insert example SAIL code
+\begin{verbatim}
+union clause ast = CSetFlags : (regidx, regidx, regidx)
+function clause execute(CSetFlags(cd, cs1, rs2)) = {
+  let cs1_val = C(cs1);
+  let rs2_val = X(rs2);
+  if cs1_val.tag & isCapSealed(cs1_val) then {
+    handle_cheri_reg_exception(CapEx_SealViolation, cs1);
+    RETIRE_FAIL
+  } else {
+    let newCap = setCapFlags(cs1_val, truncate(rs2_val, cap_flags_width));
+    C(cd) = newCap;
+    RETIRE_SUCCESS
+  }
+}
+\end{verbatim}
+%TODO format
