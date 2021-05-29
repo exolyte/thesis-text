@@ -2,6 +2,7 @@
 RISC-V is an open RISC ISA created by researchers at Berkeley University. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling. In this thesis we use CHERI's extension of the RISC-V ISA, called CHERI-RISC-V.
 
 \subsection{Instruction layout}
+\label{sec:riscvenc}
 RISC-V offers multiple instruction types that differ in the way their bits are interpreted.
 In this thesis we will only use R-type instructions, shown in figure \ref{fig:rtypeinst}.
 
@@ -35,6 +36,7 @@ Like \textit{x0}, \textit{c0} contains a fixed value which is called the null ca
 
 
 \subsection{LLVM}
+\label{sec:llvm_background}
 While several compilers that target RISC-V exist, the only compiler that targets CHERI-RISC-V is CHERI's fork of the LLVM project.
 The LLVM project offers a large amount of tools related to compiling such as a compiler for several programming languages, a linker, an assembler, a disassembler and much more.
 In this thesis we will extend CHERI's fork of the LLVM project to support the new instructions we introduce and we will use LLVM's assembler to turn assembly source files into executable binary files.

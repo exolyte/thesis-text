@@ -18,7 +18,8 @@ Over the past few years programming languages with strong type systems have gain
 One of the most popular of these is the Rust programming language.
 Rust offers a number of security features, but in this thesis we will focus on Rust's ownership and borrowing system.
 This system limits what a programmer can do with references to an object in memory, ensuring that memory is always accessed in a safe manner.
-One of the most important principles of this system is the prevention of concurrent write access or concurrent read and write access to a region of memory as this can lead to data races.
+One of the most important principles of this system is the principle of ``aliasing XOR mutability'' which means that references to a resource in memory are either allowed to mutate the resource or are allowed to be copied.
+This prevents concurrent write access or concurrent read and write access to a resource in memory which ensures the absence of things like data races.
 
 However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of the safety guarantees.
 This might, for example, open the programs up to attacks on the assembly level if they are linked with libraries that are not written in a programming language with the same safety guarantees.

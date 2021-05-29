@@ -4,6 +4,8 @@ In order to test our implementation and execute sample programs, we need access 
 \section{LLVM Modifications}
 The code snippet below shows all of the required modifications to LLVM to compile assembly programs that use the instructions added with borrowed capabilities. This snippet belongs in the \textit{RISCVInstrInfoXCheri.td} file, found in the \textit{llvm/lib/Target/RISCV/} directory, starting from the LLVM repository root.
 
+%TODO mention why we don't do this in sail
+
 %TODO formatting
 \begin{verbatim}
 let Predicates = [HasCheri] in {
@@ -30,7 +32,7 @@ let Predicates = [HasCheri, IsRV64] in
 def SL_CAP_128 : CheriStore_r<0b01101, "sl.cap", GPCR, GPCRMemAtomic>;
 \end{verbatim}
 
-The code snippet defines all of the new instructions and specifies how they need to be encoded. Most of the instructions make use of the \textit{Cheri\_r} or \textit{Cheri\_rr} templates, discussed in section \ref{} %TODO reference background
+The code snippet defines all of the new instructions and specifies how they need to be encoded. Most of the instructions make use of the \textit{Cheri\_r} or \textit{Cheri\_rr} templates, discussed in section \ref{sec:llvm_background}.
 The first argument to these templates, the funct5 or funct7 arguments, express how the mnemonic stated in the second argument should be encoded to bits. The funct5 or funct7 arguments correspond to the encoding as shown in section \ref{sec:sailencoding}. The remainder of the arguments are optional and used to override the defaults in the template. Passing \textit{GPCR} to the template expresses that the corresponding register should be interpreted as a capability register.
 
 The \textit{ll.cap} and \textit{sl.cap} instructions that stand for the linear load and store instructions use a different template, corresponding to their purpose, but follow the same principles as above. The first argument expresses the encoding, the second argument is the mnemonic to be used and the third and fourth arguments define the interpretation of operands.
