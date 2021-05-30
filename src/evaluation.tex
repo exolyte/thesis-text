@@ -43,9 +43,121 @@ _user:
 .align 6; .global tohost; tohost: .dword 0;
 \end{verbatim}
 %TODO refer to the github where this was inspired from
-
-\section{Instruction Testing}
+%TODO add code to _user that obtains starting capabilities
 
 \section{Comparison to Rust}
+In this section we introduce assembly programs that mirror the functionality of the Rust examples that we discussed in section \ref{sec:rustbackground}.
+\subsection{Borrowing}
+We start off with the example that we gave to illustrate borrowing in listing \ref{code:borrowexample}.
+The assembly equivalent of this Rust program is shown in figure \ref{fig:asmborrowexample}.
+The first two lines load an integer to integer register $x1$ and store that integer in the memory pointed to by the capability in capability register $c2$.
+This is somewhat similar to creating a new variable, $x$, and assigning it a value.
 
-\section{Performance}
+The next five lines start by creating a lifetime token, which is roughly similar to opening a new scope.
+The lifetime token is then used to mutably borrow $x$ with the borrowed capability $m$ being placed in register $c2$ and the resulting index token being placed in $c3$.
+The borrow operation also locks the capability corresponding to $x$ away in the borrow table which ensures that it cannot be used to read or write from, just as Rust guarantees.
+The borrowed capability is then used to load the value, increment it and store it again.
+These load and store operations succeed because the lifetime token is in the lifetime token register of $c31$.
+
+In the following block the lifetime token is killed and then used with the index token in $c3$ to retrieve the original capability corresponding to $x$.
+The capability is then moved back to $c2$ which results in the same state as the start of the program, with the exception of the incremented integer in $x1$ and memory.
+
+In the following lines, the assembly program diverges slightly from the original Rust program.
+This is because borrowing $x$ results in the capability being locked away in the borrow table which makes it impossible to dereference while in the Rust example, the $x$ variable is read from within the lifetime of the borrows.
+The solution is to create an immutable shell borrow of $x$ under its own lifetime that can then be copied and reborrowed which is done in lines 13-15.
+While this is semantically different from the original Rust program, it matches the behavior for immutable borrows where the owner can be used to read from, but not write to the resource.
+In line 17 a sublifetime is created which is then used to reborrow a copy of the $x_shell$ variable in lines 18-20.
+We will expand more on reborrows in the next section.
+Because we don't care about retrieving the copy of the $x_shell$ variable, we set the output for the index token in the borrow operations to $c0$ which results in no capability being locked away in the borrow table and no index token being created.
+
+The capabilities corresponding to $x_shell$, $s1$ and $s2$ can then be used to print the value they point to, which we represent in a simplified manner by loading the value they point to.
+Because $x_shell$ was borrowed under a different lifetime than $s1$ and $s2$, the lifetime tokens must be moved around to allow for dereferencing the capability in $c2$.
+The last four lines kill the sublifetime, use that dead lifetime token to remove the child from the parent lifetime which then enables the parent lifetime to be killed.
+The dead parent lifetime token can then be used with the index token in $c5$ to retrieve the original mutable capability corresponding to the $x$ variable.
+
+\begin{figure}[h]
+\begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
+li             x1 5
+sw.cap         x1 0(c2)    #let mut x = 5;
+
+CCreateToken   c31 c0      #{
+CBorrowMut     c3 c2 c31   #m = &mut x;
+lw.cap         x1 0(c2)
+addi           x1 x1 1
+sw.cap         x1 0(c2)    #*m += 1;
+
+CKillToken     c31 c31     #}
+CRetrieveIndex c3 c3 c31
+CMove          c2 c3
+
+CCreateToken   c31 c0      #{
+CBorrowImmut   c5, c2, c31 #let x_shell = &x;
+CMove          c3, c2      #let x_temp = x_shell;
+CMove          c30, c31
+CCreateToken   c31, c30    #{
+CBorrowImmut   c0, c3, c31 #let s1 = &x_temp;
+CMove          c4, c2      #let x_temp = x_shell;
+CBorrowImmut   c0, c4, c31 #let s2 = &x_temp;
+
+lw.cap         x1, 0(c3)   #println!("{}", s1);
+lw.cap         x1, 0(c4)   #println!("{}", s2);
+CMove          c29, c31
+CMove          c31, c30
+lw.cap         x1, 0(c2)   #println!("{}", x_shell);
+
+CKillToken     c29, c29    #}
+CUnlockToken   c31, c29
+CKillToken     c31, c31    #}
+CRetrieveIndex c5, c5, c31
+\end{lstlisting}
+\caption{An assembly program illustrating borrowing.}
+\label{fig:asmborrowexample}
+\end{figure}
+
+\subsection{Reborrowing}
+While we did have an example of reborrowing in the previous section, reborrowing also exists explicitly in Rust as seen in section \ref{sec:backgroundreborrow}.
+In this section we give an assembly program in figure \ref{fig:asmreborrowexample} that corresponds to the Rust program shown in listing \ref{code:reborrow_semantics}.
+
+The first four lines of the program are similar to the previous assembly program.
+On line 6 we create a new lifetime token as the child of the token in $c30$ which can be used to reborrow borrowed capabilities with that lifetime.
+This is what we do on line 7, where the mutable borrowed capability gets locked away in the borrow table, the new immutable borrowed capability takes its place and the index token gets placed in $c4$.
+This means that an error such as the one in listing \ref{code:reborrow_semantics_wrong} where the mutable reference is used while the immutable reference exists, cannot occur.
+The integer value is then loaded through the immutable borrowed capability.
+
+The lifetime token for the immutable borrow is then killed and used to unlock the parent lifetime token.
+This guarantees that the immutable borrow cannot be used anymore and it is safe to retrieve the mutable borrow.
+This is done in line 12 through the index token in $c4$.
+
+The rest of the program is once again similar to the program in the previous section.
+\begin{figure}[h]
+\begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
+li             x1 5
+sw.cap         x1 0(c2)    #let mut x = 5;
+CCreateToken   c30 c0      #{
+CBorrowMut     c3 c2 c30   #m = &mut x;
+
+CCreateToken   c31 c30     #{
+CBorrowImmut   c4 c2 c31   #let s = &(*m);
+lw.cap         x1 0(c2)    #println!("{}", s);
+
+CKillToken     c31 c31     #}
+CUnlockToken   c30 c31
+CRetrieveIndex c4 c4, c31
+
+CMove          c31 c30
+lw.cap         x1 0(c4)
+addi           x1 x1 1
+sw.cap         x1 0(c4)    #*m += 1;
+
+CKillToken     c31 c31     #}
+CRetrieveIndex c3 c3 c31
+\end{lstlisting}
+\caption{An assembly program illustrating borrowing.}
+\label{fig:asmreborrowexample}
+\end{figure}
+
+\subsection{Borrowing Struct Fields}
+
+\subsection{Using Lifetime Fractions}
+
+\subsection{Nested References}

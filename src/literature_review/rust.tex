@@ -1,4 +1,5 @@
 \section{The Rust programming language}
+\label{sec:rustbackground}
 Rust is a relatively new programming language that aims to provide the high performance associated with other low-level programming languages such as C and C++ while simultaneously preventing a number of classes of bugs related to memory and thread safety that typically arise due to the low-level resource management features necessary to achieve such high performance.
 Rust accomplishes this at compile time by statically checking if the source code satisfies the rules of Rust's strong ownership-based type system.
 Because these rules are conservative and might reject correct programs, Rust provides an \textit{unsafe} mode in which some of these rules do not need to be satisfied.
@@ -10,7 +11,7 @@ When a value gets created, ownership of that value will be assigned to a variabl
 This value stays valid until its owner goes out of scope after which it cannot be used anymore.
 Ownership of a value can be transferred to another variable, when this happens the value cannot be accessed anymore through the original variable.
 This is illustrated in listing \ref{code:move} which fails to compile because \textit{a} gets accessed after its value has been moved to \textit{b}.
-\begin{lstlisting}[language=Rust,frame=single,caption=Borrowing struct fields,label=code:move]
+\begin{lstlisting}[language=Rust,frame=single,caption=Moving a variable,label=code:move]
 fn main() {
     let a = String::from("This is a heap allocated string");
     let b = a;
@@ -35,9 +36,9 @@ It is however allowed to read the value and immutably lend the value again.
 This means that an unlimited amount of shared borrows can read a value at the same time, but it cannot be mutated while any of those shared borrows exist.
 
 Listing \ref{code:borrowexample} shows a simple program that creates a mutable variable \textit{x}, borrows it mutably and increments the value through that borrow 
-Then, after the mutable borrow has ended, the program borrows \textit{x} twice, but this time immutably and uses those borrows to print the value.
+Then, after the mutable borrow has ended, the program borrows \textit{x} twice, but this time immutably and uses those borrows to print the value. Note that during the immutable borrow, the owner variable \textit{x} stays available to read from.
 
-\begin{lstlisting}[language=Rust,frame=single,caption=Borrowing struct fields,label=code:borrowexample]
+\begin{lstlisting}[language=Rust,frame=single,caption=Borrowing an integer,label=code:borrowexample]
 fn main() {
     let mut x = 5;
     {
@@ -47,7 +48,7 @@ fn main() {
     {
         let s1 = &x;
         let s2 = &x;
-        println!("{}, {}", s1, s2);
+        println!("{}, {}, {}",x, s1, s2);
     }
 }
 \end{lstlisting}
@@ -88,31 +89,31 @@ Borrowing has a number of specific interactions depending on the situation and t
 Because these interactions are important when we model the Rust semantics on the hardware level, we introduce them in more depth here.
 
 \subsubsection{Reborrowing}
+\label{sec:backgroundreborrow}
 In section \ref{subsec:borrowing} we stated that a value can not be immutably borrowed while it is mutably borrowed.
 This is not entirely accurate as listing \ref{code:reborrow_semantics} shows.
 In the example we create a mutable value and borrow it mutably.
-We then pass the borrow into the \textit{reborrow} function.
-The reborrow function is able to create a shared borrow from the mutable borrow.
+We then create a shared borrow from the mutable borrow.
 This phenomenon where a borrow gets borrowed again is called a reborrow.
 Reborrowing a borrow works similarly to borrowing an owner in the sense that the original borrow --- which we will also call the \textit{parent} --- loses (some of) its permissions while the reborrowed reference --- which we will also call the \textit{child} --- is active.
 This can be seen in the difference between listing \ref{code:reborrow_semantics} and listing \ref{code:reborrow_semantics_wrong}.
 In listing \ref{code:reborrow_semantics}, the mutable borrow is not used until the lifetime of the shared borrow has already ended and the code compiles correctly.
-However, if we move the increment to the value one line up as in Listing \ref{code:reborrow_semantics_wrong}, the Rust compiler returns an error because the shared borrow still gets used after the increment.
+However, if we move the increment to the value up as in Listing \ref{code:reborrow_semantics_wrong}, the Rust compiler returns an error because the shared borrow still gets used after the increment.
 This reborrow feature adds a lot of expressivity to Rust's fairly strict semantics and will have a major impact on our design choices for borrowed capabilities.
 
 \noindent
 \begin{tabular}{p{6.65cm} p{6.65cm}}
     \begin{lstlisting}[language=Rust,frame=single,caption=Reborrow Example,label=code:reborrow_semantics]
 fn main() {
-    let mut x = 5;
+  let mut x = 5;
+  {
     let m = &mut x;
-    reborrow(m);
-}
-
-fn reborrow(m: &mut i64) {
-    let s = &(*m);
-    println!("{}", s);
+    {
+      let s = &(*m);
+      println!("{}", s);
+    }
     *m += 1;
+  }
 }
     \end{lstlisting}
 
@@ -120,15 +121,15 @@ fn reborrow(m: &mut i64) {
 
     \begin{lstlisting}[language=Rust,frame=single,caption=Wrong Example,label=code:reborrow_semantics_wrong]
 fn main() {
-    let mut x = 5;
+  let mut x = 5;
+  {
     let m = &mut x;
-    reborrow(m);
-}
-
-fn reborrow(m: &mut i64) {
-    let s = &(*m);
-    *m += 1;
-    println!("{}", s);
+    {
+      let s = &(*m);
+      *m += 1;
+      println!("{}", s);
+    }
+  }
 }
     \end{lstlisting}
 \end{tabular}

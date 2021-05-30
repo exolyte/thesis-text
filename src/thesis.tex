@@ -2,6 +2,20 @@
 \usepackage{listings, listings-rust}
 \usepackage{bytefield}
 \usepackage{color}
+\usepackage[usenames,dvipsnames,acmlarge]{xcolor}
+
+\definecolor{mGreen}{rgb}{0,0.5,0} %very readable shade of green, used by Marco Patrignani in some of his paperss
+\lstdefinestyle{custASM}{
+  basicstyle=\footnotesize\ttfamily,
+  escapeinside={/*@}{@*/},
+  mathescape=true,
+  commentstyle=\color{mGreen},
+  tabsize=4,
+  morecomment=[l]{\#},
+  numberstyle=\tiny\color{gray},
+  numbersep=6pt,
+}
+
 \setup{% Remove the "%" on the next line when using UTF-8 character encoding
   inputenc=utf8,
   title={Borrowed Capabilities},
