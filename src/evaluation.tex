@@ -1,7 +1,48 @@
 \chapter{Evaluation}
 
-
 \section{Assembly Explanation}
+In this section we explain the assembly code that is required to set up the program and is common to all of the examples we will show in this chapter.
+To save space and to focus on the essential part of the assembly, we will not repeat the code that is given here.
+
+The assembly snippet starts off by defining the \textit{\_start} label which is read by the emulator and used to determine where the emulator should start executing code.
+The code at the \textit{\_start} label loads the address of the \textit{\_trap\_vector} label in the \textit{t0} register and then sets that address as the address to trap to when an instruction encounters an exception with the \textit{csrw} instruction.
+The following two lines do something similar but set the return address that is returned to when executing the \textit{mret} instruction instead.
+Then the \textit{mret} causes the emulator to enter user mode and jump to the \textit{\_user} label.
+The \textit{\_user} label is where the code that we give throughout this chapter will be placed when executing the examples.
+The code at the \textit{\_trap\_vector} label loads the value 3 in a register that will be used to pass the return code of the program to the emulator and then jumps to the \textit{\_exit} label.
+The code at the \textit{\_exit} label writes the value in \textit{gp} to the \textit{tohost} address which is considered communication with the emulator.
+The emulator considers any value with the least significant bit set to 1 as a message to stop the emulation with a return code defined by the number in the other bits of the value.
+A return code of zero means that the program exited successfully while any other value signifies an error code that corresponds to a failure in the program.
+In the section of code at \textit{\_trap\_vector} we set the value to 3 which corresponds to a failure with error code 1.
+This happens when some instruction in our program raised an exception.
+In the other assembly snippets we will give throughout this chapter, we will set the value of \textit{gp} to 1 to signify success.
+The final line of the assembly defines the \textit{tohost} symbol and address so that the emulator knows which address it should be listening to.
+\begin{verbatim}
+        .global _start
+_start:
+        la t0,  _trap_vector
+        csrw	mtvec,t0
+
+        la      t0, _user
+        csrw    mepc, t0
+        mret
+
+.align 4
+_trap_vector:
+        li      gp,3
+        j       _exit
+
+_exit:
+        auipc   t5, 0x1
+        sw      gp, tohost, t5
+        j       _exit
+
+_user:
+        ...
+
+.align 6; .global tohost; tohost: .dword 0;
+\end{verbatim}
+%TODO refer to the github where this was inspired from
 
 \section{Instruction Testing}
 
