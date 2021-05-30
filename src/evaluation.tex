@@ -20,8 +20,8 @@ The final line of the assembly defines the \textit{tohost} symbol and address so
 \begin{verbatim}
         .global _start
 _start:
-        la t0,  _trap_vector
-        csrw	mtvec,t0
+        la      t0, _trap_vector
+        csrw	mtvec, t0
 
         la      t0, _user
         csrw    mepc, t0
@@ -29,12 +29,12 @@ _start:
 
 .align 4
 _trap_vector:
-        li      gp,3
+        li      gp, 3
         j       _exit
 
 _exit:
         auipc   t5, 0x1
-        sw      gp, tohost, t5
+        sw      gp tohost, t5
         j       _exit
 
 _user:
@@ -152,11 +152,49 @@ sw.cap         x1 0(c4)    #*m += 1;
 CKillToken     c31 c31     #}
 CRetrieveIndex c3 c3 c31
 \end{lstlisting}
-\caption{An assembly program illustrating borrowing.}
+\caption{An assembly program illustrating rereborrowing.}
 \label{fig:asmreborrowexample}
 \end{figure}
 
 \subsection{Borrowing Struct Fields}
+In this example we use the capability in $c20$ that points to two 32 bit words.
+For simplicity we start by moving it to $c2$.
+We then load 0 in the lower word corresponding to the struct's $a$ field, increase the offset on the capability to point to the upper word and load 0 in the upper word corresponding to the $b$ field.
+To create borrows of the individual fields we first create a borrow of the full capability in $c2$ which we then split between the lower and upper word with the \textit{CSplitCap} instruction on line 10.
+After this instruction the capability pointing to only the lower word, corresponding to $a$, is present in the $c3$ register while the capability pointing to only the upper word is in the $c2$ register.
+We then increment the values in the way shown in the previous examples.
+On line 21 the two fields are of the struct are joined together again with the \textit{CMergeCap} instruction.
+This is not necessary, but we include it to show the working of the instruction.
+The end of the program is the same as in the previous examples.
+\begin{figure}[h]
+\begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
+CMove          c2,  c20
+li             x1,  0
+sw.cap         x1,  0(c2)
+li             x9,  4
+CIncOffset     c2,  c2, x9
+sw.cap         x1,  0(c2)   #let mut s = S{a:0,b:0};
+CCreateToken   c31, c0      #{
+
+CBorrowMut     c4, c2, c31
+CSplitCap      c3, c2, x9   #a = &mut s.a;
+                            #b = &mut s.b;
+
+lw.cap         x1, 0(c3)
+addi           x1, x1, 1
+sw.cap         x1, 0(c3)    #*a += 1;
+
+lw.cap         x1, 0(c2)
+addi           x1, x1, 2
+sw.cap         x1, 0(c2)    #*b += 2;
+
+CMergeCap      c3,  c3, c2
+CKillToken     c31, c31     #}
+CRetrieveIndex c4,  c4, c31
+\end{lstlisting}
+\caption{An assembly program illustrating borrowing struct fields.}
+\label{fig:asmstructexample}
+\end{figure}
 
 \subsection{Using Lifetime Fractions}
 

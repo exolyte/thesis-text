@@ -13,9 +13,9 @@ Ownership of a value can be transferred to another variable, when this happens t
 This is illustrated in listing \ref{code:move} which fails to compile because \textit{a} gets accessed after its value has been moved to \textit{b}.
 \begin{lstlisting}[language=Rust,frame=single,caption=Moving a variable,label=code:move]
 fn main() {
-    let a = String::from("This is a heap allocated string");
-    let b = a;
-    println!("{}", a);
+  let a = String::from("This is a heap allocated string");
+  let b = a;
+  println!("{}", a);
 }
 \end{lstlisting}
 
@@ -40,16 +40,16 @@ Then, after the mutable borrow has ended, the program borrows \textit{x} twice, 
 
 \begin{lstlisting}[language=Rust,frame=single,caption=Borrowing an integer,label=code:borrowexample]
 fn main() {
-    let mut x = 5;
-    {
-        let m = &mut x;
-        *m += 1;
-    }
-    {
-        let s1 = &x;
-        let s2 = &x;
-        println!("{}, {}, {}",x, s1, s2);
-    }
+  let mut x = 5;
+  {
+    let m = &mut x;
+    *m += 1;
+  }
+  {
+    let s1 = &x;
+    let s2 = &x;
+    println!("{}, {}, {}",x, s1, s2);
+  }
 }
 \end{lstlisting}
 
@@ -67,19 +67,19 @@ This is why it is necessary to link the arguments to the return value using life
 These annotations allow the function to tell its caller that the returned reference has the same lifetime as the arguments that were passed in.
 \begin{lstlisting}[language=Rust,frame=single,caption=Lifetime Example,label=code:lifetime_semantics]
 fn main() {
-    let string1 = String::from("abcd");
-    let string2 = "xyz";
+  let string1 = String::from("abcd");
+  let string2 = "xyz";
 
-    let result = longest(string1.as_str(), string2);
-    println!("The longest string is {}", result);
+  let result = longest(string1.as_str(), string2);
+  println!("The longest string is {}", result);
 }
 
 fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
-    if x.len() > y.len() {
-        x
-    } else {
-        y
-    }
+  if x.len() > y.len() {
+    x
+  } else {
+    y
+  }
 }
 \end{lstlisting} %TODO reference Rust book (this is copied)
 \label{fig:lifetime_semantics}
@@ -142,17 +142,19 @@ This code works and is considered safe Rust.
 
 \begin{lstlisting}[language=Rust,frame=single,caption=Borrowing struct fields,label=code:struct_semantics]
 struct S {
-    a: i32,
-    b: i32
+  a: i32,
+  b: i32
 }
 
 fn main() {
-    let mut s = S{a: 0, b: 0};
+  let mut s = S{a: 0, b: 0};
+  {
     let a = &mut s.a;
     let b = &mut s.b;
     *a += 1;
     *b += 2;
     println!("{}, {}", a, b);
+  }
 }
 \end{lstlisting}
 
@@ -169,14 +171,14 @@ While this may seem like a trivial difference, it is important to note because i
 \begin{tabular}{p{6.65cm} p{6.65cm}}
     \begin{lstlisting}[language=Rust,frame=single,caption=Move reference,label=code:nested_move]
 struct S<'a> {
-    n: &'a mut i32
+  n: &'a mut i32
 }
 
 fn main() {
-    let mut x= 0;
-    let mut s = S{n: &mut x};
-    let b = &mut s;
-    let n = b.n;
+  let mut x= 0;
+  let mut s = S{n: &mut x};
+  let b = &mut s;
+  let n = b.n;
 }
     \end{lstlisting}
 
@@ -184,14 +186,14 @@ fn main() {
 
     \begin{lstlisting}[language=Rust,frame=single,caption=Borrow reference,label=code:nested_borrow]
 struct S<'a> {
-    n: &'a mut i32
+  n: &'a mut i32
 }
 
 fn main() {
-    let mut x= 0;
-    let mut s = S{n: &mut x};
-    let b = &mut s;
-    let n = &b.n;
+  let mut x= 0;
+  let mut s = S{n: &mut x};
+  let b = &mut s;
+  let n = &b.n;
 }
     \end{lstlisting}
 \end{tabular}
@@ -203,23 +205,23 @@ This fails to compile because the lifetime of \textit{n} is bound to the lifetim
 
 \begin{lstlisting}[language=Rust,frame=single,caption=Reborrow Example,label=code:nested_lifetime]
 struct S<'a> {
-    n: &'a mut i32
+  n: &'a mut i32
 }
 
 fn main() {
-    let mut x= 0;
-    let mut s = S{n: &mut x};
-    let b = &mut s;
+  let mut x= 0;
+  let mut s = S{n: &mut x};
+  let b = &mut s;
 
-    let n = nested_borrow(b);
-    println!("{}", n);
+  let n = nested_borrow(b);
+  println!("{}", n);
 }
 
 fn nested_borrow<'a>(mut b: &'a mut S) -> &'a i32 {
-    *b.n += 1;
-    let rb = &mut b;
-    let n = &rb.n;
-    return n;
+  *b.n += 1;
+  let rb = &mut b;
+  let n = &rb.n;
+  return n;
 }
 \end{lstlisting}
 
@@ -228,15 +230,15 @@ This operation, however, fails to compile because Rust does not allow the loadin
 The reason for this is that there could be multiple shared references that could be used to load the mutable reference and this behavior would violate the ``aliasing XOR mutation'' principle.
 \begin{lstlisting}[language=Rust,frame=single,caption=Mutable reference through shared borrow,label=code:nested_immutmut]
 struct S<'a> {
-    n: &'a mut i32
+  n: &'a mut i32
 }
 
 fn main() {
-    let mut x= 0;
-    let mut s = S{n: &mut x};
+  let mut x= 0;
+  let mut s = S{n: &mut x};
     
-    let b = &s;
-    let n = &mut b.n;
+  let b = &s;
+  let n = &mut b.n;
 }
 \end{lstlisting}
 
