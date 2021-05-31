@@ -74,13 +74,14 @@ _user:
 
 \section{Comparison to Rust}
 In this section we introduce assembly programs that mirror the functionality of the Rust examples that we discussed in section \ref{sec:rustbackground}.
+\tomi{Make sure to place these examples somewhere in your repo, and clearly indicate in the readme and in the thesis where they are.}
 \subsection{Borrowing}
 We start off with the example that we gave to illustrate borrowing in listing \ref{code:borrowexample}.
 The assembly equivalent of this Rust program is shown in figure \ref{fig:asmborrowexample}.
 The first two lines load an integer to integer register $x1$ and store that integer in the memory pointed to by the capability in capability register $c2$.
 This is somewhat similar to creating a new variable, $x$, and assigning it a value.
 
-The next five lines start by creating a lifetime token, which is roughly similar to opening a new scope.
+The next five lines start by creating a lifetime token, which is roughly similar to opening a new scope\tomi{true, but I would explicitly mention the difference, where in rust the lifetime is attached to the pointer itself, whereas here we really reified the scope}.
 The lifetime token is then used to mutably borrow $x$ with the borrowed capability $m$ being placed in register $c2$ and the resulting index token being placed in $c3$.
 The borrow operation also locks the capability corresponding to $x$ away in the borrow table which ensures that it cannot be used to read or write from, just as Rust guarantees.
 The borrowed capability is then used to load the value, increment it and store it again.
@@ -89,11 +90,11 @@ These load and store operations succeed because the lifetime token is in the lif
 In the following block the lifetime token is killed and then used with the index token in $c3$ to retrieve the original capability corresponding to $x$.
 The capability is then moved back to $c2$ which results in the same state as the start of the program, with the exception of the incremented integer in $x1$ and memory.
 
-In the following lines, the assembly program diverges slightly from the original Rust program.
+In the following lines, the assembly program diverges slightly from the original Rust program. \tomi{add forward reference to discussion section here}
 This is because borrowing $x$ results in the capability being locked away in the borrow table which makes it impossible to dereference while in the Rust example, the $x$ variable is read from within the lifetime of the borrows.
 The solution is to create an immutable shell borrow of $x$ under its own lifetime that can then be copied and reborrowed which is done in lines 13-15.
 While this is semantically different from the original Rust program, it matches the behavior for immutable borrows where the owner can be used to read from, but not write to the resource.
-In line 17 a sublifetime is created which is then used to reborrow a copy of the $x_shell$ variable in lines 18-20.
+In line 17 a sublifetime is created which is then used to reborrow a copy of the $x_shell$\tomi{watch out for underscores (also further on)} variable in lines 18-20.
 We will expand more on reborrows in the next section.
 Because we don't care about retrieving the copy of the $x_shell$ variable, we set the output for the index token in the borrow operations to $c0$ which results in no capability being locked away in the borrow table and no index token being created.
 
@@ -227,3 +228,8 @@ CRetrieveIndex c4,  c4, c31
 
 
 \subsection{Nested References}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End:

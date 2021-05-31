@@ -25,7 +25,7 @@ The \textit{permissions} field contains a bitmap of various permissions such as 
 
 \subsection{CHERI Capability Layout}
 \label{sec:cheri_cap_layout}
-Figure \ref{fig:cheri_capability} shows the layout of 128-bit capabilities in the latest iteration of the CHERI specification. This capability format is intended for use in 64-bit architectures. While a 64-bit capability format intended for use in 32-bit architectures exists, this format is too limited to support the work in thesis so we will not consider it here.
+Figure \ref{fig:cheri_capability} shows the layout of 128-bit capabilities in the latest iteration of the CHERI specification. This capability format is intended for use in 64-bit architectures. While a 64-bit capability format intended for use in 32-bit architectures exists, this format is too limited to support the work in this thesis, so we will not consider it here.
 
 \begin{figure}[h]
 \centering
@@ -63,7 +63,7 @@ These capabilities consist of two 64-bit words with a number of fields:
 In CHERI, each register and each capability-aligned memory location is associated with a 1-bit tag that is kept out of band. This means that the tag cannot be directly accessed by the software. A tag indicates the presence of a valid capability and is read from and written to in certain hardware operations. The tag allows the hardware to guarantee that the software does not alter its capabilities in a way that is not allowed. In general, if a program wants to alter a capability in any way, it needs to do this through CHERI capability manipulation instructions. If the program writes to a memory location or register where a capability resides using traditional write instructions, the hardware will clear the tag which invalidates the associated capability. It is then no longer considered a valid capability and it cannot be used anymore by the majority of CHERI instructions. It is the responsibility of the compiler to ensure that no necessary capabilities are accidentally invalidated. 
 
 \subsection{PCC \& DDC}
-Two of the most important special registers added by CHERI are the program counter capability (PCC) and the default data capability (DDC). The PCC extends the traditional program counter as a capability which allows applications to the fetching of instructions to memory locations for which the application holds a capability with execute permissions.
+Two of the most important special registers added by CHERI are the program counter capability (PCC) and the default data capability (DDC). The PCC extends the traditional program counter as a capability which allows applications to the fetching\tomi{sentence is off} of instructions to memory locations for which the application holds a capability with execute permissions.
 
 The DDC register holds a capability through which traditional, non-capability memory accesses are indirected. This is a hybridization feature that allows for running non-CHERI compiled binaries on a CHERI CPU with some of the CHERI safety guarantees. Every legacy load or store instruction is checked against the bounds and permissions of the capability in the DDC register. If the memory access is allowed by the capability in the DDC register, the instruction completes successfully. If however the memory access is not allowed, the instruction that is attempting to access memory will trap.
 
@@ -99,7 +99,7 @@ Some possible applications for this system are restricting local stack capabilit
 
 \subsection{Linear Capabilities}
 %TODO: this is probably a bit too brief
-Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way. Linear capabilities can be used to enforce well-bracketed control flow and local state encapsulation \cite{10.1145/3290332} or to represent memory resources described by spatial separation logic predicates.\cite{10.1145/3341688} In this thesis we will find additional uses for linear capabilities.
+Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way\tomi{Intuitively explain why this is useful, and what guarantees you get from this}. Linear capabilities can be used to enforce well-bracketed control flow and local state encapsulation \cite{10.1145/3290332} or to represent memory resources described by spatial separation logic predicates.\cite{10.1145/3341688} In this thesis we will find additional uses for linear capabilities.
 
 Two proposed instructions that relate to the splitting and merging of linear capabilities with congruent sections of memory have been found to be difficult to implement in microarchitecture because they have to write to two different registers in the same instruction. For the work in this thesis we rely on these instructions. We acknowledge these difficulties as a weakness in our design, but do not attempt to mitigate these issues.
 
@@ -129,3 +129,8 @@ While an implementation of CHERI in MIPS exists, in this thesis we work with the
 CHERI-RISC-V supports both a split and a merged register file. With a split register file, registers able to hold capabilities are separate from the integer registers. In contrast, with a merged register file all registers are able to hold both capabilities and integers where the upper 64 bits of a register are ignored if an operand register is interpreted as an integer. A merged register file has significant performance benefits. In this thesis we will work with a merged register file.
 
 Capabilities in CHERI-RISC-V have an extra 1-bit field used for the encoding-mode flag. The addition of this flag reduces the amount of reserved bits from three to two. The encoding-mode flag is used on capabilities that are used as the PCC. When the bit is off, the system is in integer encoding mode, meaning that operands to traditional RISC-V loads and store instructions are interpreted as traditional integer addresses. When the bit is set, the system is in capability encoding mode, meaning that operands to traditional RISC-V load and store instructions are interpreted as capabilities. The big advantage of this mode is that traditional RISC-V load and store instructions can be used with capabilities, saving a significant amount of opcode space.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "../thesis"
+%%% End:

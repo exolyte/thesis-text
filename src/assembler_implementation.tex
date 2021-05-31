@@ -1,8 +1,8 @@
 \chapter{Assembler Implementation}
-In order to test our implementation and execute sample programs, we need access to an assembler that supports our newly added instructions. We opted to extend CHERI's fork of the LLVM project that already has support for compiling and assembling code to CHERI supported architectures, including CHERI-RISC-V.
+In order to test our implementation and execute sample programs, we need access to an assembler that supports our newly added instructions. We opted to extend CHERI's fork of the LLVM project that already has support for compiling and assembling code to CHERI supported architectures, including CHERI-RISC-V\ref{Maybe reference Sander Huyghebaert's thesis as a source of information on how to do this (even though most of the actual info actual came from his presentation)}.
 
 \section{LLVM Modifications}
-The code snippet below shows all of the required modifications to LLVM to compile assembly programs that use the instructions added with borrowed capabilities. This snippet belongs in the \textit{RISCVInstrInfoXCheri.td} file, found in the \textit{llvm/lib/Target/RISCV/} directory, starting from the LLVM repository root.
+The code snippet below shows all of the required modifications to LLVM to compile assembly programs that use the instructions added with borrowed capabilities. This snippet belongs in the \textit{RISCVInstrInfoXCheri.td} file, found in the \textit{llvm/lib/Target/RISCV/} directory, starting from the LLVM repository root\tomi{make sure you refer to this code too, here and/or in the introduction, and make the repo public}.
 
 %TODO mention why we don't do this in sail
 

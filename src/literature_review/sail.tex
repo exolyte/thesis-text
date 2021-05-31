@@ -1,5 +1,5 @@
 \section{RISC-V \& SAIL}
-RISC-V is an open RISC ISA created by researchers at Berkeley University. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling. In this thesis we use CHERI's extension of the RISC-V ISA, called CHERI-RISC-V.
+RISC-V is an open RISC ISA created by researchers at Berkeley University \tomi{ref}. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling. In this thesis we use CHERI's extension of the RISC-V ISA, called CHERI-RISC-V.
 
 \subsection{Instruction layout}
 \label{sec:riscvenc}
@@ -25,6 +25,8 @@ Because CHERI has a distinction between integer and capability registers, CHERI 
 The \textit{c} registers refer to capability registers while \textit{r} registers refer to integer registers.
 This distinction is merely cosmetical as the underlying bits just represent a register number and are agnostic to whether the field is interpreted as an integer or capability register.
 
+\tomi{Later on in the thesis, you introduce instructions with a single source register. Discuss how this fits into the format either here or there.}
+
 \subsection{Registers}
 The base RISC-V ISA provides 32 integer registers that are named by an x in front of their number.
 Reading from the \textit{x0} register always results in reading zero, regardless of what was written to the register.
@@ -37,7 +39,7 @@ Like \textit{x0}, \textit{c0} contains a fixed value which is called the null ca
 
 \subsection{LLVM}
 \label{sec:llvm_background}
-While several compilers that target RISC-V exist, the only compiler that targets CHERI-RISC-V is CHERI's fork of the LLVM project.
+While several compilers that target RISC-V exist, the only compiler that targets CHERI-RISC-V is CHERI's fork of the LLVM project\tomi{ref}.
 The LLVM project offers a large amount of tools related to compiling such as a compiler for several programming languages, a linker, an assembler, a disassembler and much more.
 In this thesis we will extend CHERI's fork of the LLVM project to support the new instructions we introduce and we will use LLVM's assembler to turn assembly source files into executable binary files.
 %TODO refer to cheri-llvm repo
@@ -61,7 +63,7 @@ def CGetPerm : Cheri_r<0x0, "cgetperm">;
 %TODO explain opcodes used in our examples?
 
 \subsection{Sail}
-Sail is an ISA specification language that can be used to formally describe the semantics of the instructions of an ISA. Sail models for several different ISA's such as RISC-V, CHERI-RISC-V and ARM have been implemented. SAIL models have a variety of additional uses such as generating documentation, constructing an emulator and formal reasoning about the ISA.
+Sail is an ISA specification language that can be used to formally describe the semantics of the instructions of an ISA\tomi{ref}. Sail models for several different ISA's such as RISC-V, CHERI-RISC-V and ARM have been implemented. SAIL models have a variety of additional uses such as generating documentation, constructing an emulator and formal reasoning about the ISA.
 A Sail model consists of a series of instruction definitions, code describing their functionality and a mapping between instruction definitions, binary encodings and mnemonic opcodes.
 Because Sail does not offer an assembler, we need to use an other assembler as mentioned before.
 In this thesis we will extend the CHERI-RISC-V Sail model and will use the emulator to test a prototype of our design.
@@ -91,3 +93,8 @@ function clause execute(CSetFlags(cd, cs1, rs2)) = {
 }
 \end{verbatim}
 %TODO format
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "../thesis"
+%%% End:

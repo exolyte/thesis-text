@@ -1,8 +1,8 @@
 \chapter{Mapping Borrowed Capabilities to Architecture}
-In this chapter we will discuss the concrete implementation of the design outlined in section \ref{sec:maindesign}. First, we will discuss the specifics of linear capabilities which are based on previous work. We lean heavily on the suggestions outlined in the CHERI specification\cite{UCAM-CL-TR-951} for the implementation of linear capabilities. Then we describe the implementation of borrowed capabilities which are built on top of linear capabilities. Throughout this chapter we keep possible microarchitectural limitations in mind, but we do not discuss them in depth. The instructions and other architectural elements discussed in this chapter are implemented in the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
+In this chapter we will discuss the concrete implementation of the design outlined in section \ref{sec:maindesign}. First, we will discuss the specifics of linear capabilities which are based on previous work\tomi{reference specifically; did you use Aaron's bachelor's thesis in the end? if so, reference it too.}. We lean heavily on the suggestions outlined in the CHERI specification \cite{UCAM-CL-TR-951} for the implementation of linear capabilities. Then we describe the implementation of borrowed capabilities which are built on top of linear capabilities. Throughout this chapter we keep possible microarchitectural limitations in mind, but we do not discuss them in depth\tomi{This sounds a bit weird; either refer to the place where you do discuss them, or rephrase this a bit, e.g. ``our focus is not on ...''}. The instructions and other architectural elements discussed in this chapter are implemented in the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
 
 \section{Linear Capabilities}
-Figure \ref{fig:linear_capability} shows the layout of a 128-bit CHERI-RISC-V capability with linearity support. The only differences between this format and the format shown in figure \ref{fig:cheri_capability} is the addition of a \textit{flag} field, required in the CHERI-RISC-V architecture as described in section \ref{sec:cheri-risc-v} and the addition of a \textit{linear} field. The linear field consists of only one bit which indicates whether the capability is linear or not.
+Figure \ref{fig:linear_capability} shows the layout of a 128-bit CHERI-RISC-V capability with linearity support. The only differences between this format and the format shown in figure \ref{fig:cheri_capability} is the addition of a \textit{flag} field, required in the CHERI-RISC-V architecture as described in section \ref{sec:cheri-risc-v} and the addition of a \textit{linear} field $l$. The linear field consists of only one bit which indicates whether the capability is linear or not.
 
 \begin{figure}[h]
 \centering
@@ -220,7 +220,7 @@ Index tokens do not use the fields related to bounds which means the $I_E$, \tex
 The previous \textit{a} field is split up into two different fields to hold the index in the borrow table and the lifetime id associated with the token. These two fields are 18 and 16 bits wide which means that the second word of an index token has 30 unassigned bits. The \textit{lifetime id} field indicates which lifetime id this index token corresponds to. A capability can only be retrieved when a dead lifetime token with the lifetime id in this field is present. The \textit{index} field indicates which capability should be retrieved from the borrow table when consuming the index token. The width of this field proportional to the size of the borrow table which is discussed in section \ref{sec:lcbt}.
 
 \subsubsection{Memory Capabilities}
-The layout of memory capabilities does not get changed with the introduction of borrowed capabilities. It remains the same layout that was introduced by linear capabilities in figure \ref{fig:linear_capability}. However, the introduction of borrowed capabilities does make a breaking change with regards to the \textit{otype} field.
+The layout of memory capabilities does not change with the introduction of borrowed capabilities. It remains the same layout that was introduced by linear capabilities in figure \ref{fig:linear_capability}. However, the introduction of borrowed capabilities does make a breaking change with regards to the \textit{otype} field.
 
 Whereas previously almost the full otype range was reserved for code-data pairs, the introduction of borrowed capabilities splits this otype space in two, reserving half of it for use as lifetime ids. This results in three separate otype ranges. The first range, from 0 to $\frac{2^{18}}{2} - 1$ is used for lifetime ids. The first value of zero is not actually used as a valid lifetime id, but exists to represent the absence of a child or parent lifetime in lifetime tokens. The second range, from  $\frac{2^{18}}{2}$ to $2^{18} - 17$ is used for code-data pairs. The last range, from $2^{18} - 16$ to $2^{18} - 1$ is reserved for specific identifiers such as the lifetime token identifier and the index token identifier as discussed above. Note that borrowed memory capabilities can be identified by the presence of a lifetime id in their \textit{otype} field. Thanks to splitting the otype space in half, this can be accomplished by checking just the first bit of the otype field.
 
@@ -228,7 +228,8 @@ An alternative to this scheme would be to add an extra bit that determines wheth
 
 \subsection{Lifetime Counter \& Borrow Table}
 \label{sec:lcbt}
-\subsubsection{Life Counter}
+\tomi{a lot of this is conceptual explanation that you might want to move to the design section (you should also create some more structure there, as the description of the design will otherwise become quite lengthy)}
+\subsubsection{Lifetime Counter}
 Borrowed capabilities require a method to securely generate new lifetime ids. It should at all times be impossible to reuse an existing lifetime id as this would enable vulnerabilities such as using an old dead lifetime token to prove the death of a currently living lifetime. To generate new unique lifetimes we introduce an internal hardware register called the lifetime counter. This lifetime counter is initialized to one and incremented every time a new lifetime id gets created. The size of this lifetime counter corresponds to the size of the \textit{otype} field which is 18 bits. When the software tries to create a lifetime id that is out of the allowed range, a hardware exception is raised. This is further described in section \ref{sec:lifetimeinsts}.
 
 \subsubsection{Borrow Table}
@@ -381,6 +382,7 @@ The \textit{CRetrieveIndex} instruction retrieves the capability in the borrow t
 \label{sec:sailencoding}
 The snippet below shows the mapping between instructions and their encoding. As mentioned in section \ref{sec:riscvenc}, all of these instructions use the R-type instruction encoding.
 
+\tomi{The remark I left in the RISC-V section was essentially asking for this explanation :) I would just put a one-line summary with a forward reference there.}
 With the exception of the load and store instructions, the instructions that use only two operands have a fixed \textit{func7} field of \textit{1111111} and use the \textit{rs2} field as another func field instead. Their \textit{rs2} field is unique for each instruction and is the way how the instructions are identified. The rest of their encoding consists of the source register number, a fixed \textit{func3} field of \textit{000}, the destination register number and the CHERI-specific opcode of \textit{1011011}.
 
 The instructions that use three operands are identified by their unique \textit{func7} field. Their next field is used for the number of the second source register. Their further encoding is analogous to the set of instructions that was described before, including the fixed \textit{func3} value and the CHERI-specific opcode.
@@ -434,6 +436,7 @@ LinearStoreCapCap(cs2, cs1) <->
 \end{verbatim}
 
 \section{Microarchitectural Considerations}
+\tomi{Consider moving to a more general discussion section.}
 \subsection{Multiple Register Writes}
 Throughout this chapter we occasionally mentioned the need for instructions to write to multiple registers and the microarchitectural difficulties connected to this. In table \ref{table:multiplewrites} we present the instructions that require writing to multiple registers. We make a distinction between instructions that just need to invalidate the tag on capabilities in a specific register and instructions that need to write to the actual contents of a register as we suspect that clearing the tag on a capability in a specific register might be easier to implement in microarchitecture.
 \begin{table}[h]
@@ -455,5 +458,10 @@ Clear Tag & Full Write \\
 
 \subsection{Borrow Table}
 \label{sec:microarchbt}
-Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory. Such a mechanism used to be present in older CHERI versions in the CCall instruction. %TODO reference this
+Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory\tomi{Note: in this case, you still trust the entire kernel. You could also trap to a routine in ROM somewhere.}. Such a mechanism used to be present in older CHERI versions in the CCall instruction. %TODO reference this
 In this thesis we do not concern ourselves with the details of the implementation of the borrow table and assume it is provided to us by the hardware.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "thesis"
+%%% End:
