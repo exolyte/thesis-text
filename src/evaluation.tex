@@ -9,13 +9,26 @@ The code at the \textit{\_start} label loads the address of the \textit{\_trap\_
 The following two lines do something similar but set the return address that is returned to when executing the \textit{mret} instruction instead.
 Then the \textit{mret} causes the emulator to enter user mode and jump to the \textit{\_user} label.
 The \textit{\_user} label is where the code that we give throughout this chapter will be placed when executing the examples.
+There is some common set-up code under the \textit{\_user} that is shown here and will be explained later.
+
 The code at the \textit{\_trap\_vector} label loads the value 3 in a register that will be used to pass the return code of the program to the emulator and then jumps to the \textit{\_exit} label.
 The code at the \textit{\_exit} label writes the value in \textit{gp} to the \textit{tohost} address which is considered communication with the emulator.
 The emulator considers any value with the least significant bit set to 1 as a message to stop the emulation with a return code defined by the number in the other bits of the value.
 A return code of zero means that the program exited successfully while any other value signifies an error code that corresponds to a failure in the program.
 In the section of code at \textit{\_trap\_vector} we set the value to 3 which corresponds to a failure with error code 1.
-This happens when some instruction in our program raised an exception.
-In the other assembly snippets we will give throughout this chapter, we will set the value of \textit{gp} to 1 to signify success.
+This happens when some instruction in our program raises an exception.
+At the end of the code under the \textit{\_user} label we set the value of \textit{gp} to 1 to signify successful completion of the code.
+
+The rest of the code under the \textit{\_user} label consists of set-up code that we need for our example programs.
+The \textit{CSpecialRW} instruction gets a capability with the maximum amount of permissions from the DDC register and stores it in the $c2$ register.
+The binary value \textit{111101} is then loaded in $x1$, representing the presence of the \textit{Global} and the load and store CHERI permissions, but none of the others.
+These permissions are applied to the capability in $c2$ through the \textit{CAndPerm} instruction.
+We then set the offset of the capability to point to \textit{0x82000000} which is an arbitrary address in system memory.
+The first \textit{CSetBounds} instruction duplicates the capability to $c20$, sets the base to \textit{0x82000000} and sets the length to 8 which is the length of two 32 bit words.
+This capability in $c20$ will be used in one of the later program examples.
+The second \textit{CSetBounds} instruction does something similar to the capability in $c2$, but sets the length to 4 instead.
+The last two lines of the code under the \textit{\_user} label make both of these capabilities linear so that they behave like Rust owner variables.
+
 The final line of the assembly defines the \textit{tohost} symbol and address so that the emulator knows which address it should be listening to.
 \begin{verbatim}
         .global _start
@@ -38,12 +51,26 @@ _exit:
         j       _exit
 
 _user:
+        cspecialrw  c2, ddc, c0
+        li          x1, 0b111101
+        CAndPerm    c2, c2, x1
+        li          x1, 0x82000000
+        CIncOffset  c2, c2, x1
+        li          x1, 8
+        CSetBounds  c20, c2, x1
+        li          x1, 4
+        CSetBounds  c2, c2, x1
+        CMakeLinear c2, c2
+        CMakeLinear c20, c20
+        
         ...
+        
+        li  gp,1
+        j   _exit
 
 .align 6; .global tohost; tohost: .dword 0;
 \end{verbatim}
 %TODO refer to the github where this was inspired from
-%TODO add code to _user that obtains starting capabilities
 
 \section{Comparison to Rust}
 In this section we introduce assembly programs that mirror the functionality of the Rust examples that we discussed in section \ref{sec:rustbackground}.
@@ -197,5 +224,6 @@ CRetrieveIndex c4,  c4, c31
 \end{figure}
 
 \subsection{Using Lifetime Fractions}
+
 
 \subsection{Nested References}
