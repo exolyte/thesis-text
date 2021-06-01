@@ -24,6 +24,8 @@ This prevents concurrent write access or concurrent read and write access to a r
 However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of the safety guarantees.
 This might, for example, open the programs up to attacks on the assembly level if they are linked with libraries that are not written in a programming language with the same safety guarantees.
 In this thesis we explore an extension to the capability machine architecture CHERI in order to provide support on the assembly level for the safety guarantees that the Rust programming language offers.
+This could then be used as the target for a \textit{secure compiler}, a compiler that ensures that any attack against the target language is possible if and only if it is possible against the source language.
+%TODO reference secure compilation
 
 Hardware capabilities are unforgeable pointers that represent authority over a region of memory.
 They are comparable to software fat pointers in that they enforce bounds checking and hold permissions that specify how a region of memory can be used.

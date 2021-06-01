@@ -1,9 +1,21 @@
 \chapter{Conclusion}
 \label{cha:conclusion}
-The final chapter contains the overall conclusion. It also contains
-suggestions for future work and industrial applications.
+In this thesis we presented \textit{borrowed capabilities}, a new type of capability for CHERI that is designed to mirror the semantics of the Rust programming language.
+We introduced the design for borrowed capabilities, revolving around binding capabilities to lifetime tokens and making these bound capabilities only dereferenceable when that lifetime token is present.
+The design provides support for the ``aliasing XOR mutation'' principle by locking away capabilities in a borrow table and having both mutable and immutable borrow operations.
+Concurrent use cases were taken into account by allowing lifetime tokens to split into multiple lifetime fractions that can be used by multiple threads at the same time.
+We made a Sail implementation of both linear capabilities and borrowed capabilities and discussed the various design decisions relating to this implementation.
+We extended the LLVM compiler project to be able to assemble programs using the instructions that were introduced in the design.
+Finally we wrote sample assembly programs that mirror specific Rust programs to demonstrate how borrowed capabilities offer semantics that are similar to Rust's ownership and borrowing system.
+These assembly programs can be assembled by the LLVM assembler and run in the emulator that is produced by Sail.
+From the assembly programs we can conclude that borrowed capabilities do indeed have semantics and guarantees that are similar to those that Rust provides.
 
-\lipsum[1-7]
+There are some outstanding problems with borrowed capabilities that prevent them from being used as the target of a secure Rust compiler such as the behavior relating to nested references.
+Nevertheless, we think borrowed capabilities are significant step towards supporting Rust's ownership and borrowing system at the assembly level.
+
+We also considered borrowed capabilities as a new form of revocation in CHERI, supporting a model of mutual distrust between two parties.
+While this thesis did not focus on the use of borrowed capabilities as a general form of revocation, we do think they are promising in this regard and this is an interesting direction to explore in future work.
+
 
 %%% Local Variables: 
 %%% mode: latex

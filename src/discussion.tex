@@ -39,6 +39,7 @@ This was not attempted due to a lack of time and would be complicated because it
 This might also not give a very accurate picture as some instructions are more expensive than others.
 Any operation that requires an access to the borrow table would probably require accessing memory which is much more expensive than a simple move instruction for example.
 This problem is further exacerbated due to the fact that the cost of accessing memory varies greatly depending on whether the processor cache is used or not.
+%TODO moving lifetime tokens around to get them into C31 is probably expensive as well
 
 \section{Borrowed Capabilities for Revocation}
 In this section we discuss borrowed capabilities as a concept that is not tied to Rust's semantics, but as a way to revoke capabilities on CHERI.
