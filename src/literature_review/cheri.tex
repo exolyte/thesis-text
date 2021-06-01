@@ -99,9 +99,25 @@ Some possible applications for this system are restricting local stack capabilit
 
 \subsection{Linear Capabilities}
 %TODO: this is probably a bit too brief
-Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way\tomi{Intuitively explain why this is useful, and what guarantees you get from this}. Linear capabilities can be used to enforce well-bracketed control flow and local state encapsulation \cite{10.1145/3290332} or to represent memory resources described by spatial separation logic predicates.\cite{10.1145/3341688} In this thesis we will find additional uses for linear capabilities.
+Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way.\tomi{Intuitively explain why this is useful, and what guarantees you get from this}. Linear capabilities can be used to enforce well-bracketed control flow and local state encapsulation \cite{10.1145/3290332}.
 
 Two proposed instructions that relate to the splitting and merging of linear capabilities with congruent sections of memory have been found to be difficult to implement in microarchitecture because they have to write to two different registers in the same instruction. For the work in this thesis we rely on these instructions. We acknowledge these difficulties as a weakness in our design, but do not attempt to mitigate these issues.
+
+\subsection{Revocation}
+Capabilities are particularly well suited to ensure spatial memory safety, but they are not inherently designed to solve temporal memory safety issues.
+One important concept in preventing temporal memory safety issues is \textit{revocation}; repealing the access an untrusted stakeholder has to a certain resource.
+Prior work has attempted to solve the revocation issue in several ways.
+CHERIvoke \cite{xia_cherivoke_2019} and Cornucopia \cite{nathaniel_wesley_filardo_cornucopia_2020} present a method of revoking capabilities by modifying the system's memory allocator and periodically sweeping memory to remove capabilities pointing to memory that has been freed.
+While this approach to temporal safety could be tailored to different scenarios than just memory allocation, it includes the memory allocator into the trusted computing base (TCB), and could be prohibitively expensive if the memory sweep is required often (e.g.\ after each call to an adversary).
+Two other approaches each use \textit{local} and \textit{linear} capabilities to implement a type of revocation that does not rely on a memory sweep or a software TCB, and could perform better in the aforementioned scenarios.
+
+Skorstengaard et al.\ introduce a new calling convention using local capabilities \cite{skorstengaard:esop18} to enforce revocation on the stack.
+Georges et al. have proposed a new type of capability, called uninitialized capabilities \cite{georges_efficient_2021} to prevent the necessity of clearing the write-local memory in this stack setting.
+Van Strydonck et al.\ used linear capabilities to implement revocation in a fully abstract compiler from separation-logic-verified C code to a capability machine \cite{van_strydonck_linear_2019}, and Skorstengaard et al.\ used them to enforce well-bracketed control flow and stack encapsulation \cite{skorstengaard:popl19}.
+Because linear capabilities cannot be copied at all, they are a very restrictive way of revoking capabilities.
+For example, they cannot be used to provide multiple parties with simultaneous read-only access, or in a multi-threaded setting.
+
+Our design of borrowed capabilities will provide a new way of revocation which we will discuss in more depth in chapter \ref{chap:discussion}.
 
 \subsection{Sealed Capabilities}
 \label{sec:sealed}

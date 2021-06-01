@@ -1,0 +1,66 @@
+\chapter{Discussion}
+\label{chap:discussion}
+In this chapter we discuss some considerations and shortcomings of our design of borrowed capabilities.
+
+\section{Nested references}
+In section \ref{sec:rust_nested} we explained Rust's rules around load references through a borrow.
+
+In listing \ref{code:nested_borrow} we demonstrated that a mutable reference has to be borrowed when loaded through a borrow.
+This is not supported in our design for borrowed capabilities because the borrow operations work only on registers, not on memory.
+A solution for this would involve a new instruction that loads the mutable capability, stores it in the borrow table, places a borrowed capability in the output register with a lifetime id that matches a provided lifetime token and writes an index token to memory.
+This instruction that is a fusion of a load and borrow operation would be very complex and it might not be realistic to implement this in microarchitecture.
+Additionally, as shown in listing \ref{code:nested_lifetime}, any reference that is loaded in this way needs to have a shorter lifetime than the reference that was used to load it, regardless of whether is a mutable or immutable reference.
+In our design this means that the lifetime token provided to load-borrow instruction needs to be a child of the lifetime of the capability that is being used to load, adding further complexity to the instruction.
+Another issue is that such an instruction would give issues with loading references that already use their \textit{otype} field for another purpose because then the \textit{otype} would not be available for a lifetime id.
+
+Another issue is that immutable references can not be used to load mutable references as explained in \ref{code:nested_immutmut}.
+Instead, the loaded references are made immutable which in turn renders them unable to load mutable references.
+Simply unsetting the write permissions on a capability that is loaded through an immutable borrowed capability is not sufficient as this loaded capability would be able load mutable capability itself, losing the recursive property.
+A possible solution would be to use the experimental CHERI \textit{Permit\_Recursive\_Mutable\_Load} permission that removes store permissions and this permission itself on any capability that is loaded through a capability that does not have this permission set.
+%TODO ref
+
+\section{Semantic Lifetimes}
+In section \ref{sec:semantic_lifetimes} we explained how Rust detects the last usage of a borrow in order to make the lifetime as short as possible.
+This is a way to make Rust code more flexible and readable, but has its limitations because the lifetimes are still determined statically.
+In essence, borrowed capabilities do something similar by making lifetimes dynamic.
+With dynamic lifetimes, the specific lifetimes of certain borrows do not have to be known at compile time which makes them more flexible than Rust's semantic lifetimes.
+This would create opportunities to make Rust code more flexible as borrowed capabilities would enforce Rust's guarantees dynamically.
+
+\section{Performance}
+As mentioned in chapter \ref{chap:evaluation} we do not evaluate our design on performance, because this is hard without actual hardware.
+This is a problem that is not unique to our design, but has actually been an issue for CHERI research for a while.
+While CHERI prototypes on FPGA's have been used to get an idea about performance, these prototypes are still far from an actual processor that is comparable to normal modern processors.
+One interesting development in this field is the Morello project which is a collaboration between the CHERI developers and ARM to create an actual processor that supports CHERI.
+This CHERI processor would give a much better idea about the performance impact of CHERI in general.
+%TODO ref
+
+As for borrowed capabilities, one performance measure that we could have used to evaluate our design is a sort of microbenchmark that counts the amount of additional instructions required for a program that uses borrowed capabilities.
+This was not attempted due to a lack of time and would be complicated because it requires a non-trivial assembly program with a borrowed capability version and a baseline version for comparison.
+This might also not give a very accurate picture as some instructions are more expensive than others.
+Any operation that requires an access to the borrow table would probably require accessing memory which is much more expensive than a simple move instruction for example.
+This problem is further exacerbated due to the fact that the cost of accessing memory varies greatly depending on whether the processor cache is used or not.
+%TODO moving lifetime tokens around to get them into C31 is probably expensive as well
+
+\section{Borrowed Capabilities for Revocation}
+In this section we discuss borrowed capabilities as a concept that is not tied to Rust's semantics, but as a way to revoke capabilities on CHERI.
+Through this lens, borrowed capabilities allow software to create scopes in the form of lifetime tokens and allow capabilities to be bound to these scopes.
+The revocation problem then shifts to the revocation of lifetimes as opposed to the revocation of individual capabilities.
+Revoking a lifetime works in a similar manner as revoking linear capabilities, but avoids the restrictive copy prohibition on capabilities that linear references have.
+It also avoids the restriction on storing local capabilities in non-write-local memory while still being able to do fine grained revocation of capabilities.
+
+Borrowed capabilities follow the ``aliasing XOR mutation'' principle, which means that they offer revocation in a setting where there is mutual distrust between two parties.
+A callee that is given a mutable borrowed capability and a matching lifetime token can be certain that its caller cannot access the resource that the capability points to because the caller's version of the capability is stored away in the borrow table and can only be retrieved by killing the lifetime token that the callee holds.
+In the other direction, a caller can be sure that a callee does not have access to a resource anymore when the caller holds the dead lifetime token.
+Something to note is that mutual distrust requires that only linear capabilities can be borrowed since a callee has to be sure no copies of the capability exist.
+``Aliasing XOR mutation'' also implies the need for two borrow operations because mutable borrows need to be linear.
+This linearity requirement means that it is not possible to create an immutable borrow from a mutable borrow by removing write permissions as there is no way to remove the linearity on the mutable borrow.
+
+The design of borrowed capabilities for revocation can be simplified significantly if we don't require ``aliasing XOR mutation'' or mutual distrust.
+In this case a caller just wants to be sure that a callee cannot access a resource anymore after it has returned.
+This removes the requirement for a borrow table as the callee can just hold on to the capability that is being borrowed.
+It would allow for non linear capabilities to be borrowed since the callee wouldn't care about the caller holding copies.
+Another interesting simplification is that mutably borrowed capabilities would not need to be linear which leads to the possibility of having only one borrow operation.
+This borrow operation would result in a borrowed capability with the same permissions as the input capability.
+If the caller wanted to restrict the callee's write access, it could still do that by removing the permissions on the borrowed capability.
+
+\section{Usage of fractions}

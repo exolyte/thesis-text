@@ -1,4 +1,9 @@
 \chapter{Evaluation}
+\label{chap:evaluation}
+To evaluate our design of borrowed capabilities we will construct some assembly programs and argue about how they are similar to certain Rust programs.
+This gives us an idea about how well an ISA with borrowed capabilities can be used as a target language for a Rust compiler.
+Because we only have an emulator and no actual hardware implementation, it is hard to evaluate the performance of our design.
+We will not evaluate the design on performance, but we will discuss it briefly in chapter \ref{chap:discussion}.
 
 \section{Assembly Explanation}
 In this section we explain the assembly code that is required to set up the program and is common to all of the examples we will show in this chapter.
@@ -180,7 +185,7 @@ sw.cap         x1 0(c4)    #*m += 1;
 CKillToken     c31 c31     #}
 CRetrieveIndex c3 c3 c31
 \end{lstlisting}
-\caption{An assembly program illustrating rereborrowing.}
+\caption{An assembly program illustrating reborrowing.}
 \label{fig:asmreborrowexample}
 \end{figure}
 
@@ -194,6 +199,7 @@ We then increment the values in the way shown in the previous examples.
 On line 21 the two fields are of the struct are joined together again with the \textit{CMergeCap} instruction.
 This is not necessary, but we include it to show the working of the instruction.
 The end of the program is the same as in the previous examples.
+
 \begin{figure}[h]
 \begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
 CMove          c2,  c20
@@ -225,11 +231,42 @@ CRetrieveIndex c4,  c4, c31
 \end{figure}
 
 \subsection{Using Lifetime Fractions}
+In this section we give an assembly program that corresponds to a simplified version of the threading example that we gave in listing \ref{code:thread}.
+The example in listing \ref{code:thread} was slightly complicated to work around limitations around threading in the Rust standard library, but because borrowed capabilities do not have those limitations we can give a simpler example here.
+Because real threading involves a scheduler and pre-empting, we will describe the creation of a thread instead of giving code as to keep the assembly simple.
 
+The first five lines are once again similar to previous examples.
+On line 6 we make a copy of the immutable borrow so that we have two copies of the borrow and we can give one to each thread.
+On line 7 we split the lifetime token into two fractions, one for each thread.
+The next few lines describe the creation and ending of two new threads.
+After the threads are finished, we merge the two lifetime fractions to obtain the full lifetime token which allows us to kill the lifetime token and retrieve the original capability.
 
-\subsection{Nested References}
+\begin{figure}[h]
+\begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
+li             x1, 5
+sw.cap         x1, 0(c2)    #let mut x = 5;
 
-%%% Local Variables:
-%%% mode: latex
-%%% TeX-master: "thesis"
-%%% End:
+CCreateToken   c31, c0      #{
+CBorrowImmut   c4, c2, c31  #m = &x;
+CMove          c3, c2
+CSplitLT       c30, c31
+
+Move registers c2 and c30   #let handle1 =
+to new thread.              #thread::spawn(...);
+Move registers c3 and c31   #let handle2 =
+to new thread.              #thread::spawn(...);
+...
+Retrieve lifetime fraction  #handle1.join();
+from thread and place it
+in c5.
+Retrieve lifetime fraction  #handle2.join();
+from thread and place it
+in c6.
+
+CMergeLT       c5, c5, c6
+CKillToken     c5 c5        #}
+CRetrieveIndex c4 c4 c5
+\end{lstlisting}
+\caption{An assembly program illustrating the use of lifetime fractions.}
+\label{fig:asmthreadexample}
+\end{figure}

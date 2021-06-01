@@ -57,7 +57,7 @@ fn main() {
 \subsection{Lifetimes}
 Section \ref{subsec:borrowing} explained the rules regarding borrowing, but did not explain how a borrow actually ends.
 For this, Rust has a concept called lifetimes.
-Every borrow has a lifetime which determines when the borrow is valid.
+Every borrow has a lifetime that roughly corresponds to its variable scope which determines when the borrow is valid.
 In order to lighten the load on the programmer, the Rust compiler usually implicitly infers the lifetimes of borrows.
  \tomi{mention that they were initially tied to the scope, but that now there is a thing called semantic lifetimes (and explain), so that you can refer back to this explanation in the discussion section, when you mention that our approach is even more 'semantic' than Rust's semantic lifetimes, since we perform our checks entirely dynamically}
 However, in some situations it is necessary to explicitly annotate the Rust code with lifetimes.
@@ -84,7 +84,22 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
   }
 }
 \end{lstlisting} %TODO reference Rust book (this is copied)
-\label{fig:lifetime_semantics}
+
+\subsection{Semantic Lifetimes}
+\label{sec:semantic_lifetimes}
+In the previous section we mentioned that lifetimes roughly correspond to scopes.
+In reality, Rust's compiler is smart enough to detect the last usage of a variable and ends the lifetime after that last usage.
+This means that code like in listing \ref{code:semantic_lifetime} compiles correctly.
+Even though the mutable borrow $m$ is still in scope when $x$ gets incremented, the compiler detects that the increment to $m$ is the last usage of $m$ and thus ends its lifetime after that line which allows $x$ to be used again.
+In this thesis we will usually place borrows in their own scope when giving examples for clarity reasons.
+\begin{lstlisting}[language=Rust,frame=single,caption=Lifetime Example,label=code:semantic_lifetime]
+fn main() {
+  let mut x = 5;
+  let m = &mut x;
+  *m += 1;
+  x += 1;
+}
+\end{lstlisting}
 
 \subsection{Borrowing Specifics}
 Borrowing has a number of interesting implications depending on the situation and the data types that get borrowed.
@@ -161,6 +176,7 @@ fn main() {
 \end{lstlisting}
 
 \subsubsection{Nested References}
+\label{sec:rust_nested}
 \tomi{Link this to the compound data types section a little more explicitly, since it is essentially a special case.}
 Rust has some complex rules surrounding the loading of references through a borrow that points to a data structure that contains so-called ``nested references''.
 In this section we will explain some of these peculiarities through some simple examples.
@@ -247,6 +263,38 @@ fn main() {
 \end{lstlisting}
 
 We will not support all of these rules in our design for borrowed capabilities.
+
+\subsection{Threading}
+Thread safety is one of the major features of Rust as exemplified by the Rust slogan ``fearless concurrency''.
+In our implementation of borrowed capabilities we will pay attention to safe threading.
+Listing \ref{code:thread} shows an example of how threading works in Rust.
+We start off by wrapping an integer in the \textit{Arc} construct.
+This is necessary because threading in the Rust standard library has no concept of scopes which the Rust borrow checker assumes that created threads outlive their parent thread and thus the values that were owned by the parent even if the programmer correctly waits for the child threads to terminate.
+The \textit{Arc} construct works around this by ensuring that a value is not deallocated until each owner of an \textit{Arc} reference is out of scope.
+Using a third party threading library with thread scopes would remove the need for the \textit{Arc} construct.
+After creating two \textit{Arc} references to the same integer value, we move each one of them into a new thread and then wait for those threads to finish.
+Rust ensures that principle of ``aliasing XOR mutation'' is upheld by prevent the mutation of the value inside the \textit{Arc} construct.
+
+\begin{lstlisting}[language=Rust,frame=single,caption=Threading in Rust,label=code:thread]
+use std::thread;
+use std::sync::Arc;
+
+fn main() {
+  let x = Arc::new(5);
+  let c = x.clone();
+
+  let handle1 = thread::spawn(move || {
+    println!("{}", x);
+  });
+
+  let handle2 = thread::spawn(move || {
+    println!("{}", c);
+  });
+  
+  handle1.join().unwrap();
+  handle2.join().unwrap();
+}
+\end{lstlisting}
 
 \subsection{Rust Borrow Invariants}
 \label{sec:obsinvariants}

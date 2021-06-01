@@ -24,6 +24,8 @@ This prevents concurrent write accesses and concurrent read and write access to 
 However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of these safety guarantees\tomi{refer to some secure compilation paper}.
 This might, for example, open the programs up to attacks on the assembly level if they are linked with libraries that are not written in a programming language with the same safety guarantees.
 In this thesis we explore an extension to the capability machine architecture CHERI in order to provide support on the assembly level for the safety guarantees that the Rust programming language offers.
+This could then be used as the target for a \textit{secure compiler}, a compiler that ensures that any attack against the target language is possible if and only if it is possible against the source language.
+%TODO reference secure compilation
 
 Hardware capabilities are unforgeable pointers that represent authority over a region of memory.
 They are comparable to software fat pointers in that they enforce bounds checking and hold permissions that specify how a region of memory can be used.
@@ -31,6 +33,8 @@ This model is very effective at combating spatial memory issues, but is less sui
 Nevertheless, CHERI does offer some hardware primitives that software can build upon to strengthen their defense against temporal memory issues.
 In this thesis we will add a new type of capability called \textit{borrowed capability}.
 This new type of capability is designed to mimic Rust's ownership and borrowing system, but it could be seen in a wider context as an addition to the types of revocation that are already offered by CHERI.
+In this context, borrowed capabilities would allow software to define scopes that capabilities can be bound to and revoking a scope would revoke all the capabilities bound to it.
+This type of revocation would fit well into CHERI as it would be more specific then some existing types revocation while being more flexible than others.
 
 In summary, the goal of this thesis is to design an extension to the CHERI architecture that offers the same memory and thread safety guarantees as the Rust programming language.
 \tomi{Mention section numbers in explanation below, since you're going over the sections anyways + update to include discussion section}
@@ -38,6 +42,8 @@ To test our design, we will implement it in the Sail specification language, ext
 We start off by giving background information about Rust and CHERI as well as information about RISC-V and the Sail language which will be essential for the implementation of our design.
 Next, we provide an overview of our design, followed by the details of its implementation in Sail and the details of the LLVM extension.
 Finally, we will evaluate our design by constructing a number of assembly example programs and reason about how well they mimic the Rust ownership and borrowing system.
+
+A short paper that contains a summary of the work in this thesis was submitted to SILM 2021 for the workshop on the security of software / hardware interfaces and is attached in appendix \ref{app:paper}.
 
 %%% Local Variables: 
 %%% mode: latex
