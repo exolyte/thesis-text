@@ -149,3 +149,131 @@ articleno = {19},
 numpages = {28}, 
 keywords = {linear capabilities, stack frame encapsulation, secure compilation, well-bracketed control flow, fully abstract compilation, fully abstract overlay semantics, capability machines} 
 }
+
+@inproceedings{van_der_veen_memory_2012,
+	title = {Memory {Errors}: {The} {Past}, the {Present}, and the {Future}},
+	url = {http://www.few.vu.nl/~herbertb/papers/memerrors_raid12.pdf},
+	booktitle = {{RAID}},
+	author = {van der Veen, Victor and Dutt-Sharma, Nitish and Cavallaro, Lorenzo and Bos, Herbert},
+	month = oct,
+	year = {2012},
+	keywords = {type\_conf, type\_top},
+}
+
+@article{10.1145/1103845.1094836,
+author = {Hertz, Matthew and Berger, Emery D.},
+title = {Quantifying the Performance of Garbage Collection vs. Explicit Memory Management},
+year = {2005},
+issue_date = {October 2005},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {40},
+number = {10},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/1103845.1094836},
+doi = {10.1145/1103845.1094836},
+abstract = {Garbage collection yields numerous software engineering benefits, but its quantitative impact on performance remains elusive. One can compare the cost of conservative garbage collection to explicit memory management in C/C++ programs by linking in an appropriate collector. This kind of direct comparison is not possible for languages designed for garbage collection (e.g., Java), because programs in these languages naturally do not contain calls to free. Thus, the actual gap between the time and space performance of explicit memory management and precise, copying garbage collection remains unknown.We introduce a novel experimental methodology that lets us quantify the performance of precise garbage collection versus explicit memory management. Our system allows us to treat unaltered Java programs as if they used explicit memory management by relying on oracles to insert calls to free. These oracles are generated from profile information gathered in earlier application runs. By executing inside an architecturally-detailed simulator, this "oracular" memory manager eliminates the effects of consulting an oracle while measuring the costs of calling malloc and free. We evaluate two different oracles: a liveness-based oracle that aggressively frees objects immediately after their last use, and a reachability-based oracle that conservatively frees objects just after they are last reachable. These oracles span the range of possible placement of explicit deallocation calls.We compare explicit memory management to both copying and non-copying garbage collectors across a range of benchmarks using the oracular memory manager, and present real (non-simulated) runs that lend further validity to our results. These results quantify the time-space tradeoff of garbage collection: with five times as much memory, an Appel-style generational collector with a non-copying mature space matches the performance of reachability-based explicit memory management. With only three times as much memory, the collector runs on average 17% slower than explicit memory management. However, with only twice as much memory, garbage collection degrades performance by nearly 70%. When physical memory is scarce, paging causes garbage collection to run an order of magnitude slower than explicit memory management.},
+journal = {SIGPLAN Not.},
+month = oct,
+pages = {313–326},
+numpages = {14},
+keywords = {throughput, explicit memory management, oracular memory management, performance analysis, time-space tradeoff, garbage collection, paging}
+}
+
+@inproceedings{10.1145/1094811.1094836,
+author = {Hertz, Matthew and Berger, Emery D.},
+title = {Quantifying the Performance of Garbage Collection vs. Explicit Memory Management},
+year = {2005},
+isbn = {1595930310},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1094811.1094836},
+doi = {10.1145/1094811.1094836},
+abstract = {Garbage collection yields numerous software engineering benefits, but its quantitative impact on performance remains elusive. One can compare the cost of conservative garbage collection to explicit memory management in C/C++ programs by linking in an appropriate collector. This kind of direct comparison is not possible for languages designed for garbage collection (e.g., Java), because programs in these languages naturally do not contain calls to free. Thus, the actual gap between the time and space performance of explicit memory management and precise, copying garbage collection remains unknown.We introduce a novel experimental methodology that lets us quantify the performance of precise garbage collection versus explicit memory management. Our system allows us to treat unaltered Java programs as if they used explicit memory management by relying on oracles to insert calls to free. These oracles are generated from profile information gathered in earlier application runs. By executing inside an architecturally-detailed simulator, this "oracular" memory manager eliminates the effects of consulting an oracle while measuring the costs of calling malloc and free. We evaluate two different oracles: a liveness-based oracle that aggressively frees objects immediately after their last use, and a reachability-based oracle that conservatively frees objects just after they are last reachable. These oracles span the range of possible placement of explicit deallocation calls.We compare explicit memory management to both copying and non-copying garbage collectors across a range of benchmarks using the oracular memory manager, and present real (non-simulated) runs that lend further validity to our results. These results quantify the time-space tradeoff of garbage collection: with five times as much memory, an Appel-style generational collector with a non-copying mature space matches the performance of reachability-based explicit memory management. With only three times as much memory, the collector runs on average 17% slower than explicit memory management. However, with only twice as much memory, garbage collection degrades performance by nearly 70%. When physical memory is scarce, paging causes garbage collection to run an order of magnitude slower than explicit memory management.},
+booktitle = {Proceedings of the 20th Annual ACM SIGPLAN Conference on Object-Oriented Programming, Systems, Languages, and Applications},
+pages = {313–326},
+numpages = {14},
+keywords = {explicit memory management, oracular memory management, time-space tradeoff, throughput, performance analysis, garbage collection, paging},
+location = {San Diego, CA, USA},
+series = {OOPSLA '05}
+}
+
+@inproceedings{10.1145/780732.780743,
+author = {Dhurjati, Dinakar and Kowshik, Sumant and Adve, Vikram and Lattner, Chris},
+title = {Memory Safety without Runtime Checks or Garbage Collection},
+year = {2003},
+isbn = {1581136471},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/780732.780743},
+doi = {10.1145/780732.780743},
+abstract = {Traditional approaches to enforcing memory safety of programs rely heavily on runtime checks of memory accesses and on garbage collection, both of which are unattractive for embedded applications. The long-term goal of our work is to enable 100% static enforcement of memory safety for embedded programs through advanced compiler techniques and minimal semantic restrictions on programs. The key result of this paper is a compiler technique that ensures memory safety of dynamically allocated memory without programmer annotations, runtime checks, or garbage collection, and works for a large subclass of type-safe C programs. The technique is based on a fully automatic pool allocation (i.e., region-inference) algorithm for C programs we developed previously, and it ensures safety of dynamically allocated memory while retaining explicit deallocation of individual objects within regions (to avoid garbage collection). For a diverse set of embedded C programs (and using a previous technique to avoid null pointer checks), we show that we are able to statically ensure the safety of pointer and dynamic memory usage in all these programs. We also describe some improvements over our previous work in static checking of array accesses. Overall, we achieve 100% static enforcement of memory safety without new language syntax for a significant subclass of embedded C programs, and the subclass is much broader if array bounds checks are ignored. Overall, these techniques greatly expand the class of embedded programs for which 100% static enforcement of memory safety is possible, and furthermore can be achieved without new language support.},
+booktitle = {Proceedings of the 2003 ACM SIGPLAN Conference on Language, Compiler, and Tool for Embedded Systems},
+pages = {69–80},
+numpages = {12},
+keywords = {compilers, automatic pool allocation, programming languages, security, embedded systems, region management, static analysis},
+location = {San Diego, California, USA},
+series = {LCTES '03}
+}
+
+@article{10.1145/780731.780743,
+author = {Dhurjati, Dinakar and Kowshik, Sumant and Adve, Vikram and Lattner, Chris},
+title = {Memory Safety without Runtime Checks or Garbage Collection},
+year = {2003},
+issue_date = {July 2003},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {38},
+number = {7},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/780731.780743},
+doi = {10.1145/780731.780743},
+abstract = {Traditional approaches to enforcing memory safety of programs rely heavily on runtime checks of memory accesses and on garbage collection, both of which are unattractive for embedded applications. The long-term goal of our work is to enable 100% static enforcement of memory safety for embedded programs through advanced compiler techniques and minimal semantic restrictions on programs. The key result of this paper is a compiler technique that ensures memory safety of dynamically allocated memory without programmer annotations, runtime checks, or garbage collection, and works for a large subclass of type-safe C programs. The technique is based on a fully automatic pool allocation (i.e., region-inference) algorithm for C programs we developed previously, and it ensures safety of dynamically allocated memory while retaining explicit deallocation of individual objects within regions (to avoid garbage collection). For a diverse set of embedded C programs (and using a previous technique to avoid null pointer checks), we show that we are able to statically ensure the safety of pointer and dynamic memory usage in all these programs. We also describe some improvements over our previous work in static checking of array accesses. Overall, we achieve 100% static enforcement of memory safety without new language syntax for a significant subclass of embedded C programs, and the subclass is much broader if array bounds checks are ignored. Overall, these techniques greatly expand the class of embedded programs for which 100% static enforcement of memory safety is possible, and furthermore can be achieved without new language support.},
+journal = {SIGPLAN Not.},
+month = jun,
+pages = {69–80},
+numpages = {12},
+keywords = {region management, security, programming languages, automatic pool allocation, static analysis, embedded systems, compilers}
+}
+
+@ARTICLE{8688434,  author={Neshenko, Nataliia and Bou-Harb, Elias and Crichigno, Jorge and Kaddoum, Georges and Ghani, Nasir},  journal={IEEE Communications Surveys   Tutorials},   title={Demystifying IoT Security: An Exhaustive Survey on IoT Vulnerabilities and a First Empirical Look on Internet-Scale IoT Exploitations},   year={2019},  volume={21},  number={3},  pages={2702-2733},  doi={10.1109/COMST.2019.2910750}}
+
+@inproceedings{10.1145/2663171.2663188,
+author = {Matsakis, Nicholas D. and Klock, Felix S.},
+title = {The Rust Language},
+year = {2014},
+isbn = {9781450332170},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2663171.2663188},
+doi = {10.1145/2663171.2663188},
+abstract = {Rust is a new programming language for developing reliable and efficient systems. It is designed to support concurrency and parallelism in building applications and libraries that take full advantage of modern hardware. Rust's static type system is safe1 and expressive and provides strong guarantees about isolation, concurrency, and memory safety.Rust also offers a clear performance model, making it easier to predict and reason about program efficiency. One important way it accomplishes this is by allowing fine-grained control over memory representations, with direct support for stack allocation and contiguous record storage. The language balances such controls with the absolute requirement for safety: Rust's type system and runtime guarantee the absence of data races, buffer overflows, stack overflows, and accesses to uninitialized or deallocated memory.},
+booktitle = {Proceedings of the 2014 ACM SIGAda Annual Conference on High Integrity Language Technology},
+pages = {103–104},
+numpages = {2},
+keywords = {systems programming, memory management, affine type systems, rust},
+location = {Portland, Oregon, USA},
+series = {HILT '14}
+}
+
+@article{10.1145/2692956.2663188,
+author = {Matsakis, Nicholas D. and Klock, Felix S.},
+title = {The Rust Language},
+year = {2014},
+issue_date = {December 2014},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {34},
+number = {3},
+issn = {1094-3641},
+url = {https://doi.org/10.1145/2692956.2663188},
+doi = {10.1145/2692956.2663188},
+abstract = {Rust is a new programming language for developing reliable and efficient systems. It is designed to support concurrency and parallelism in building applications and libraries that take full advantage of modern hardware. Rust's static type system is safe1 and expressive and provides strong guarantees about isolation, concurrency, and memory safety.Rust also offers a clear performance model, making it easier to predict and reason about program efficiency. One important way it accomplishes this is by allowing fine-grained control over memory representations, with direct support for stack allocation and contiguous record storage. The language balances such controls with the absolute requirement for safety: Rust's type system and runtime guarantee the absence of data races, buffer overflows, stack overflows, and accesses to uninitialized or deallocated memory.},
+journal = {Ada Lett.},
+month = oct,
+pages = {103–104},
+numpages = {2},
+keywords = {affine type systems, memory management, systems programming, rust}
+}
+
+@INPROCEEDINGS{8049734,  author={Patrignani, Marco and Garg, Deepak},  booktitle={2017 IEEE 30th Computer Security Foundations Symposium (CSF)},   title={Secure Compilation and Hyperproperty Preservation},   year={2017},  volume={},  number={},  pages={392-404},  doi={10.1109/CSF.2017.13}}

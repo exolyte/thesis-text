@@ -4,28 +4,26 @@ For many years computer programs have been plagued by vulnerabilities that can b
 Several classes of these vulnerabilities arise from bugs in the source code and are related to low level control over memory.
 Spatial memory issues are vulnerabilities that arise from accessing memory that is outside of the bounds that are supposed to be accessed.
 Temporal memory issues on the other hand arise from accessing memory after the reference to that memory is supposed to have been invalidated.
-Some famous examples of spatial and temporal memory issues are buffer overflows and use after free whereby an attacker can write to memory that is not supposed to be written to\tomi{add some references whenever you make claims like this; you have very few references atm}.
+Some famous examples of spatial and temporal memory issues are buffer overflows and dangling pointers whereby an attacker can write to memory that is not supposed to be written to \cite{van_der_veen_memory_2012}.
 
 Over the past decades, several solutions to these issues have been presented and implemented.
-One of the most popular solution is the usage of memory safe programming languages that deny the programmer low level access to the memory\tomi{some example refs}.
+One of the most popular solution is the usage of memory safe programming languages that deny the programmer low level access to the memory \cite{10.1145/780731.780743}.
 Instead, the memory is managed by a language runtime and deallocated by a garbage collector.
-This solution, however, has a significant performance impact and is thus not applicable to performance sensitive programs such as kernels, browsers and low level system libraries.
+This solution, however, has a significant performance impact \cite{10.1145/1094811.1094836} and is thus not applicable to performance sensitive programs such as kernels, browsers and low level system libraries.
 These types of programs remain vulnerable and are often a vector for malware to gain control over a system.
 A class of devices that are especially vulnerable to these issues are embedded devices, since they have constrained resources and programmers require low level memory management features to gain reasonable performance.
-With the advent of the Internet of Things (IoT), these embedded devices are expected to increase in number dramatically\tomi{ref}.
+With the advent of the Internet of Things (IoT), these embedded devices are expected to increase in number dramatically \cite{8688434}.
 
-Over the past few years programming languages with strong type systems have gained renewed attention as a way to mitigate these issues and improve security\tomi{strong claim; prove with ref or weaken}.
-One of the most popular of these is the Rust programming language\tomi{ref}.
+Over the past few years programming languages with strong type systems like Rust have gained attention as a way to mitigate these issues and improve security \cite{10.1145/2692956.2663188}.
 Rust offers a number of security features, but in this thesis we will focus on Rust's ownership and borrowing system.
 This system limits what a programmer can do with references to an object in memory, ensuring that memory is always accessed in a safe manner, and statically guaranteeing thread safety.
 One of the most important principles of this system is the principle of ``aliasing XOR mutability'' which means that references to a resource in memory are either allowed to mutate the resource or are read-only and can be copied, but not both.
 This prevents concurrent write accesses and concurrent read and write access to a resource in memory, which ensures the absence of things like data races.
 
-However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of these safety guarantees\tomi{refer to some secure compilation paper}.
+However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of these safety guarantees.
 This might, for example, open the programs up to attacks on the assembly level if they are linked with libraries that are not written in a programming language with the same safety guarantees.
 In this thesis we explore an extension to the capability machine architecture CHERI in order to provide support on the assembly level for the safety guarantees that the Rust programming language offers.
-This could then be used as the target for a \textit{secure compiler}, a compiler that ensures that any attack against the target language is possible if and only if it is possible against the source language.
-%TODO reference secure compilation
+This could then be used as the target for a \textit{secure compiler}, a compiler that ensures that any attack against the target language is possible if and only if it is possible against the source language \cite{8049734}.
 
 Hardware capabilities are unforgeable pointers that represent authority over a region of memory.
 They are comparable to software fat pointers in that they enforce bounds checking and hold permissions that specify how a region of memory can be used.
@@ -37,11 +35,12 @@ In this context, borrowed capabilities would allow software to define scopes tha
 This type of revocation would fit well into CHERI as it would be more specific then some existing types revocation while being more flexible than others.
 
 In summary, the goal of this thesis is to design an extension to the CHERI architecture that offers the same memory and thread safety guarantees as the Rust programming language.
-\tomi{Mention section numbers in explanation below, since you're going over the sections anyways + update to include discussion section}
 To test our design, we will implement it in the Sail specification language, extend the LLVM project to create an assembler for our extension and run test programs on the emulator generated by Sail.
-We start off by giving background information about Rust and CHERI as well as information about RISC-V and the Sail language which will be essential for the implementation of our design.
-Next, we provide an overview of our design, followed by the details of its implementation in Sail and the details of the LLVM extension.
-Finally, we will evaluate our design by constructing a number of assembly example programs and reason about how well they mimic the Rust ownership and borrowing system.
+We start off by giving background information about Rust and CHERI as well as information about RISC-V and the Sail language which will be essential for the implementation of our design in chapter \ref{cha:litrev}.
+Next, in chapter \ref{chap:design} we provide an overview of our design, followed by the details of its implementation in Sail in chapter \ref{chap:sailimpl}.
+In chapter \ref{chap:assemblerimpl} we will give the details of the LLVM extension.
+We will then use the emulator that is generated by our Sail implementation and the assembler to evaluate our design by constructing and executing a number of assembly example programs and reason about how well they mimic the Rust ownership and borrowing system in chapter \ref{chap:evaluation}.
+Finally, we finish with a discussion about various aspects of borrowed capabilities in chapter \ref{chap:discussion} and the conclusion in chapter \ref{cha:conclusion}.
 
 A short paper that contains a summary of the work in this thesis was submitted to SILM 2021 for the workshop on the security of software / hardware interfaces and is attached in appendix \ref{app:paper}.
 
