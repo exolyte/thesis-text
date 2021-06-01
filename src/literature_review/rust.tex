@@ -11,6 +11,8 @@ When a value gets created, ownership of that value will be assigned to a variabl
 This value stays valid until its owner goes out of scope after which it cannot be used anymore.
 Ownership of a value can be transferred to another variable, when this happens the value cannot be accessed anymore through the original variable.
 This is illustrated in listing \ref{code:move} which fails to compile because \textit{a} gets accessed after its value has been moved to \textit{b}.
+
+\begin{figure}[h]
 \begin{lstlisting}[language=Rust,frame=single,caption=Moving a variable,label=code:move]
 fn main() {
   let a = String::from("This is a heap allocated string");
@@ -18,18 +20,20 @@ fn main() {
   println!("{}", a);
 }
 \end{lstlisting}
+\end{figure}
 
 \subsection{Borrowing}
 \label{subsec:borrowing}
-\tomi{Add a bit of motivation for borrowing here; moving ownership back and forth is impractical, and prevents us from having multiple read-only copies of a resource, even though this is considered safe. (This is the same motivation we have at the assembly level, so seems relevant) }
+Because moving ownership back and forth between functions is impractical and prevents the programmer from having multiple read-only copies of a resource, Rust has a system to create additional references to a resource, called the borrowing system.
 As mentioned, Rust follows the principle of ``aliasing XOR mutation'' to prevent a number of bugs related to memory safety and data races.
-The borrowing system has a set of rules that enforces this principle.
+The borrowing system follows a set of rules for references that enforces this principle.
 A value can be borrowed by variables other than its owner, giving those variables the temporary right to use the value.
 There are two types of borrows: a mutable borrow and an immutable (or shared) borrow. 
 
 A mutable borrow allows the borrowing variable to both read and mutate the contents of the value.
 To prevent multiple variables mutating the same value at the same time and to prevent variables from reading a value that is being altered, the owner temporarily loses its right to access or lend the value while a mutable borrow is in scope.
-As a result, only the borrowing variable is allowed to access the value while a mutable borrow exists. \tomi{Add that variable must be declared \texttt{mut} to borrow it mutably}
+As a result, only the borrowing variable is allowed to access the value while a mutable borrow exists.
+Of course, in order to make a mutable borrow, the owner variable must also be mutable by being by being declared \texttt{mut}.
 
 A shared borrow only allows a borrowing variable to read the contents of the value.
 While a shared borrow is in scope, the owner cannot mutate or mutably lend the value anymore.
@@ -39,6 +43,7 @@ This means that an unlimited amount of shared borrows can read a value at the sa
 Listing \ref{code:borrowexample} shows a simple program that creates a mutable variable \textit{x}, borrows it mutably and increments the value through that borrow 
 Then, after the mutable borrow has ended, the program borrows \textit{x} twice, but this time immutably and uses those borrows to print the value. Note that during the immutable borrow, the owner variable \textit{x} stays available to read from.
 
+\begin{figure}[h]
 \begin{lstlisting}[language=Rust,frame=single,caption=Borrowing an integer,label=code:borrowexample]
 fn main() {
   let mut x = 5;
@@ -53,21 +58,23 @@ fn main() {
   }
 }
 \end{lstlisting}
+\end{figure}
 
 \subsection{Lifetimes}
 Section \ref{subsec:borrowing} explained the rules regarding borrowing, but did not explain how a borrow actually ends.
 For this, Rust has a concept called lifetimes.
 Every borrow has a lifetime that roughly corresponds to its variable scope which determines when the borrow is valid.
 In order to lighten the load on the programmer, the Rust compiler usually implicitly infers the lifetimes of borrows.
- \tomi{mention that they were initially tied to the scope, but that now there is a thing called semantic lifetimes (and explain), so that you can refer back to this explanation in the discussion section, when you mention that our approach is even more 'semantic' than Rust's semantic lifetimes, since we perform our checks entirely dynamically}
 However, in some situations it is necessary to explicitly annotate the Rust code with lifetimes.
-Listing \ref{code:lifetime_semantics} shows such a situation.
+Listing \ref{code:lifetime_semantics} shows an example from the Rust book \cite{rustbook} with such a situation.
 In this example, the function \textit{longest} takes two string references as arguments and returns a reference to one of those.
 The function does not know which arguments it will be called with and thus cannot implicitly infer any information about their lifetimes.
 This also means it cannot give any guarantees about the lifetime of its return value.
 This is why it is necessary to link the arguments to the return value using lifetime parameter annotations.
 These annotations allow the function to tell its caller that the returned reference has the same lifetime as the arguments that were passed in.
-\begin{lstlisting}[language=Rust,frame=single,caption=Lifetime Example,label=code:lifetime_semantics]
+
+\begin{figure}[h]
+\begin{lstlisting}[language=Rust,frame=single,caption=Lifetime example,label=code:lifetime_semantics]
 fn main() {
   let string1 = String::from("abcd");
   let string2 = "xyz";
@@ -83,16 +90,20 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
     y
   }
 }
-\end{lstlisting} %TODO reference Rust book (this is copied)
+\end{lstlisting}
+\end{figure}
 
 \subsection{Semantic Lifetimes}
 \label{sec:semantic_lifetimes}
 In the previous section we mentioned that lifetimes roughly correspond to scopes.
-In reality, Rust's compiler is smart enough to detect the last usage of a variable and ends the lifetime after that last usage.
-This means that code like in listing \ref{code:semantic_lifetime} compiles correctly.
+In the early versions of Rust, lifetimes were indeed bound to scopes, but in more recent versions of Rust the compiler is smart enough to detect the last usage of a variable and ends the lifetime after that last usage.
+This behavior is called \textit{semantic lifetimes} because it takes the semantic meaning of the program into account when determining the lifetime of a variable.
+This behavior means that code like in listing \ref{code:semantic_lifetime} compiles correctly.
 Even though the mutable borrow $m$ is still in scope when $x$ gets incremented, the compiler detects that the increment to $m$ is the last usage of $m$ and thus ends its lifetime after that line which allows $x$ to be used again.
 In this thesis we will usually place borrows in their own scope when giving examples for clarity reasons.
-\begin{lstlisting}[language=Rust,frame=single,caption=Lifetime Example,label=code:semantic_lifetime]
+
+\begin{figure}[h]
+\begin{lstlisting}[language=Rust,frame=single,caption=Semantic lifetimes,label=code:semantic_lifetime]
 fn main() {
   let mut x = 5;
   let m = &mut x;
@@ -100,6 +111,7 @@ fn main() {
   x += 1;
 }
 \end{lstlisting}
+\end{figure}
 
 \subsection{Borrowing Specifics}
 Borrowing has a number of interesting implications depending on the situation and the data types that get borrowed.
@@ -120,7 +132,7 @@ This reborrow feature adds a lot of expressivity to Rust's fairly strict semanti
 
 \noindent
 \begin{tabular}{p{6.65cm} p{6.65cm}}
-    \begin{lstlisting}[language=Rust,frame=single,caption=Reborrow Example,label=code:reborrow_semantics]
+    \begin{lstlisting}[language=Rust,frame=single,caption=Reborrow example,label=code:reborrow_semantics]
 fn main() {
   let mut x = 5;
   {
@@ -153,10 +165,13 @@ fn main() {
 
 \subsubsection{Compound Data Types}
 While safe Rust does have a large amount of limitations around slices of data types such as arrays, the borrowing of individual fields of structs is well supported.
-This means that it is possible to have multiple mutable references or both mutable and shared references to the same struct at the same as long as they point to different members of the struct\tomi{This is usually formalized in terms of something called ``places''; maybe mention that}.
+This means that it is possible to have multiple mutable references or both mutable and shared references to the same struct at the same as long as they point to different members of the struct.
+In a more general sense, such named regions in memory are often referred to as \textit{places} \cite{2019arXiv190300982W}.
+Rust allows places within compound data structures to be borrowed as long as they do not overlap.
 Listing \ref{code:struct_semantics} shows an example where both fields of a struct get mutably borrowed and independently altered.
-This code works and is considered safe Rust\tomi{Then you can explain here that disjoint places are borrowed, so this is safe}.
+This code works and is considered safe Rust because the borrows point to disjoint places.
 
+\begin{figure}[h]
 \begin{lstlisting}[language=Rust,frame=single,caption=Borrowing struct fields,label=code:struct_semantics]
 struct S {
   a: i32,
@@ -174,19 +189,21 @@ fn main() {
   }
 }
 \end{lstlisting}
+\end{figure}
 
 \subsubsection{Nested References}
 \label{sec:rust_nested}
-\tomi{Link this to the compound data types section a little more explicitly, since it is essentially a special case.}
+Another problem occurs when for example compound data structures hold references to other resources.
 Rust has some complex rules surrounding the loading of references through a borrow that points to a data structure that contains so-called ``nested references''.
 In this section we will explain some of these peculiarities through some simple examples.
 
 The first rule pertains to the loading of references through a borrow in general.
-Listing \ref{code:nested_move} shows an instantiation \textit{s} of a struct that holds a reference to an integer\tomi{Explain what the 'a is doing in the definition of S}.
+Listing \ref{code:nested_move} shows an instantiation \textit{s} of a struct that holds a reference to an integer.
+The definition of the struct \textit{S} has a lifetime parameter which indicates that an instance of the struct cannot outlive the reference \textit{n} within it.
 Then, \textit{s} gets borrowed by the variable \textit{b} and the variable \textit{n} tries to load the reference to the integer.
-This, however, fails because this code tries to move the reference out of the struct into \textit{n}\tomi{Explain, like you do below, why this would be dangerous}.
+This, however, fails because this code tries to move the reference out of the struct into \textit{n} which would leave the struct with an empty \textit{n} field.
 The simple solution to this issue is to borrow the reference to the integer instead, as shown in listing \ref{code:nested_borrow}.
-While this may seem like a trivial difference, it is important to note because it means that ownership of a reference cannot be moved out of a struct via a borrow and it means that the variables that have loaded such a reference are bound to a sub-lifetime of the structure's lifetime themselves.
+While this may seem like a trivial difference, it is important to note because it means that ownership of a reference cannot be moved out of a struct via a borrow and it means that the variables that have loaded such a reference are bound to a sub-lifetime of the lifetime of the nested reference themselves.
 \begin{tabular}{p{6.65cm} p{6.65cm}}
     \begin{lstlisting}[language=Rust,frame=single,caption=Move reference,label=code:nested_move]
 struct S<'a> {
@@ -217,37 +234,11 @@ fn main() {
     \end{lstlisting}
 \end{tabular}
 
-In the next example in listing \ref{code:nested_lifetime} we show some code where the lifetime of this loaded reference is relevant.
-In this code we pass the borrow for the struct into the \textit{nested\_borrow} function where it is reborrowed by the \textit{rb} variable.
-We then load the integer reference to the variable \textit{n} and try to return \textit{n}.
-This fails to compile because the lifetime of \textit{n} is bound to the lifetime of \textit{rb} which does not outlast the function.
-\tomi{I don't think this exactly right. What this example illustrates is that you cannot, in general, return a reference to a local variable in the stackframe of a function, since once this function returns, its stack-frame will be deallocated and you are left with a dangling pointer. This example will still not work if `rb' is any other local variable. Note that it does compile if you simply write 'let n =\& b.n;'. I guess you can still use the simplified example to show how the lifetime is propagated in the signature of nested\_borrow}
-
-\begin{lstlisting}[language=Rust,frame=single,caption=Reborrow Example,label=code:nested_lifetime]
-struct S<'a> {
-  n: &'a mut i32
-}
-
-fn main() {
-  let mut x= 0;
-  let mut s = S{n: &mut x};
-  let b = &mut s;
-
-  let n = nested_borrow(b);
-  println!("{}", n);
-}
-
-fn nested_borrow<'a>(mut b: &'a mut S) -> &'a i32 {
-  *b.n += 1;
-  let rb = &mut b;
-  let n = &rb.n;
-  return n;
-}
-\end{lstlisting}
-
-Our last example in listing \ref{code:nested_immutmut} shows that \textit{s} is immutably borrowed by \textit{b} and \textit{n} then tries to get a mutable reference through \textit{b}.
+Our next example in listing \ref{code:nested_immutmut} shows that \textit{s} is immutably borrowed by \textit{b} and \textit{n} then tries to get a mutable reference through \textit{b}.
 This operation, however, fails to compile because Rust does not allow the loading of mutable references through shared references.
 The reason for this is that there could be multiple shared references that could be used to load the mutable reference and this behavior would violate the ``aliasing XOR mutation'' principle.
+
+\begin{figure}[h]
 \begin{lstlisting}[language=Rust,frame=single,caption=Mutable reference through shared borrow,label=code:nested_immutmut]
 struct S<'a> {
   n: &'a mut i32
@@ -261,6 +252,7 @@ fn main() {
   let n = &mut b.n;
 }
 \end{lstlisting}
+\end{figure}
 
 We will not support all of these rules in our design for borrowed capabilities.
 
@@ -275,6 +267,7 @@ Using a third party threading library with thread scopes would remove the need f
 After creating two \textit{Arc} references to the same integer value, we move each one of them into a new thread and then wait for those threads to finish.
 Rust ensures that principle of ``aliasing XOR mutation'' is upheld by prevent the mutation of the value inside the \textit{Arc} construct.
 
+\begin{figure}[h]
 \begin{lstlisting}[language=Rust,frame=single,caption=Threading in Rust,label=code:thread]
 use std::thread;
 use std::sync::Arc;
@@ -295,11 +288,12 @@ fn main() {
   handle2.join().unwrap();
 }
 \end{lstlisting}
+\end{figure}
 
 \subsection{Rust Borrow Invariants}
 \label{sec:obsinvariants}
 In this section we will give a more in-depth explanation of what the Rust safety guarantees are in the form of a set of invariants.
-Kan et al.\ \tomi{latex nitpick; if a full stop does not end a sentence, put a \textbackslash{} after it to get the right spacing and avoid the end-of-sentence spacing } \cite{Kan2018AnEO}\tomi{has this paper been published now? either add the venue, or add the arxiv link} identify a set of five invariants that must hold when borrowing in Rust.
+Kan et al.\ \cite{kan2020executable} identify a set of five invariants that must hold when borrowing in Rust.
 These invariants that they refer to as the ownership and borrowing system (OBS) invariants are listed in figure \ref{fig:obsinvariants}.
 The OBS invariants ensure that each reference points to a valid block of memory and that each valid block can either be accessed through multiple immutable references or one mutable reference.
 
@@ -312,19 +306,17 @@ The OBS invariants ensure that each reference points to a valid block of memory 
     \item \textit{Writing permission invariant}: If $x$ borrows or reborrows $y$ immutably then the writing permission of $y$ should be disabled until the end of $x$'s lifetime.
     \item \textit{Reading and writing permissions invariant}: If $x$ borrows or reborrows $y$ mutably then both the reading and writing permissions of $y$ should be disabled until the end of $x$'s lifetime.
 \end{enumerate}
-\caption{The five OBS invariants.\cite{Kan2018AnEO}}
+\caption{The five OBS invariants.\cite{kan2020executable}}
 \label{fig:obsinvariants}
 \end{figure}
 
 \subsection{Rust Static Guarantees}
 Because the compiler automatically deallocates values after their owner goes out of scope, the programmer cannot make typical deallocation related mistakes such as \textit{double free} or \textit{invalid free}.
 An owner can only go out of scope when no more borrows exist, meaning that a \textit{use after free} bug is impossible.
-The borrow system eliminates the necessity of using raw pointers and prevents problems relating to null pointers\tomi{actually, null pointers are handled by simply not having a null value} or buggy pointer arithmetic.
+The borrow system eliminates the necessity of using raw pointers which prevents problems like buggy pointer arithmetic.
 Rust also prevents concurrent read and write access to a value, making data races impossible.
 All of these static safety guarantees also result in Rust's ability to prevent thread related bugs and enforce thread safety.
-\tomi{Perhaps this would be a good spot to reference Rustbelt for the first time, since it is an effort to formalize these alleged guarantees that Rust provides you with}
-
-%TODO ref rustbelt and rust book
+Jung et al.\ \cite{10.1145/3158154} have built a formal model that resembles Rust and serves as a basis for proving Rust's safety guarantees.
 
 %%% Local Variables:
 %%% mode: latex

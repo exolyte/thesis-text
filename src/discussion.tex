@@ -9,8 +9,8 @@ In listing \ref{code:nested_borrow} we demonstrated that a mutable reference has
 This is not supported in our design for borrowed capabilities because the borrow operations work only on registers, not on memory.
 A solution for this would involve a new instruction that loads the mutable capability, stores it in the borrow table, places a borrowed capability in the output register with a lifetime id that matches a provided lifetime token and writes an index token to memory.
 This instruction that is a fusion of a load and borrow operation would be very complex and it might not be realistic to implement this in microarchitecture.
-Additionally, as shown in listing \ref{code:nested_lifetime}, any reference that is loaded in this way needs to have a shorter lifetime than the reference that was used to load it, regardless of whether is a mutable or immutable reference.
-In our design this means that the lifetime token provided to load-borrow instruction needs to be a child of the lifetime of the capability that is being used to load, adding further complexity to the instruction.
+Additionally, any reference that is loaded in this way is actually a reborrow of the nested reference and thus needs to have a shorter lifetime than the nested reference itself, regardless of whether it is a mutable or immutable reference.
+In our design this means that the lifetime token provided to the load-borrow instruction needs to be a child of the lifetime of the nested reference, adding further complexity to the instruction.
 Another issue is that such an instruction would give issues with loading references that already use their \textit{otype} field for another purpose because then the \textit{otype} would not be available for a lifetime id.
 
 Another issue is that immutable references can not be used to load mutable references as explained in \ref{code:nested_immutmut}.

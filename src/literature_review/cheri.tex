@@ -63,7 +63,7 @@ These capabilities consist of two 64-bit words with a number of fields:
 In CHERI, each register and each capability-aligned memory location is associated with a 1-bit tag that is kept out of band. This means that the tag cannot be directly accessed by the software. A tag indicates the presence of a valid capability and is read from and written to in certain hardware operations. The tag allows the hardware to guarantee that the software does not alter its capabilities in a way that is not allowed. In general, if a program wants to alter a capability in any way, it needs to do this through CHERI capability manipulation instructions. If the program writes to a memory location or register where a capability resides using traditional write instructions, the hardware will clear the tag which invalidates the associated capability. It is then no longer considered a valid capability and it cannot be used anymore by the majority of CHERI instructions. It is the responsibility of the compiler to ensure that no necessary capabilities are accidentally invalidated. 
 
 \subsection{PCC \& DDC}
-Two of the most important special registers added by CHERI are the program counter capability (PCC) and the default data capability (DDC). The PCC extends the traditional program counter as a capability which allows applications to the fetching\tomi{sentence is off} of instructions to memory locations for which the application holds a capability with execute permissions.
+Two of the most important special registers added by CHERI are the program counter capability (PCC) and the default data capability (DDC). The PCC extends the traditional program counter as a capability which allows software to limit the fetching of instructions to memory locations for which the application holds a capability with execute permissions.
 
 The DDC register holds a capability through which traditional, non-capability memory accesses are indirected. This is a hybridization feature that allows for running non-CHERI compiled binaries on a CHERI CPU with some of the CHERI safety guarantees. Every legacy load or store instruction is checked against the bounds and permissions of the capability in the DDC register. If the memory access is allowed by the capability in the DDC register, the instruction completes successfully. If however the memory access is not allowed, the instruction that is attempting to access memory will trap.
 
@@ -94,14 +94,15 @@ A capability can either be \textit{global}, which means it can be stored in memo
 
 For example, if a component has exclusive access to some piece of memory (i.e. no other component has a capability pointing to that part of memory) through a capability with \textit{Permit\_Store\_Local\_Capability} and it has no other capabilities with \textit{Permit\_Store\_Local\_Capability}, it means that \textit{local} capabilities cannot be passed on to other components. As another example, consider a component that has a capability pointing to a shared part of memory with \textit{Permit\_Store\_Local\_Capability}. This means that the component can store \textit{local} capabilities to that shared part of memory. Other components can then load the \textit{local} capability from the shared memory, but they cannot store it again, unless they have a capability with \textit{Permit\_Store\_Local\_Capability} themselves.
 
-%TODO: make it more clear that the following examples are copied
-Some possible applications for this system are restricting local stack capabilities to be stored only on the local stack or letting capabilities flow in only one way through a shared buffer.\cite{UCAM-CL-TR-951} %page 59
+Some possible applications for this system described in the CHERI specification are restricting local stack capabilities to be stored only on the local stack or letting capabilities flow in only one way through a shared buffer.\cite{UCAM-CL-TR-951} %page 59
 
 \subsection{Linear Capabilities}
-%TODO: this is probably a bit too brief
-Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way.\tomi{Intuitively explain why this is useful, and what guarantees you get from this}. Linear capabilities can be used to enforce well-bracketed control flow and local state encapsulation \cite{10.1145/3290332}.
+Linear capabilities is a concept that has been proposed by multiple researchers and is currently being considered for adoption in CHERI. We briefly introduce it here because the work in this thesis makes extensive use of linear capabilities. Linear capabilities are capabilities that can not be copied in any way.
+This is useful to implement mechanisms such as Rust's ownership system.
+It also guarantees the holder of the linear capability that no other party can access the memory that the capability points to, making it safe for the holder to do whatever it wants with the memory.
+When a caller delegates a linear capability to a callee and the callee then returns the linear capability, the caller can be sure that the callee does not have access to the memory anymore, acting as a form of \textit{revocation}.
 
-Two proposed instructions that relate to the splitting and merging of linear capabilities with congruent sections of memory have been found to be difficult to implement in microarchitecture because they have to write to two different registers in the same instruction. For the work in this thesis we rely on these instructions. We acknowledge these difficulties as a weakness in our design, but do not attempt to mitigate these issues.
+Two proposed instructions that relate to the splitting and merging of linear capabilities with congruent sections of memory have been found to be difficult to implement in microarchitecture because they have to write to two different registers in the same instruction. For the work in this thesis we rely on these instructions. We acknowledge these difficulties as a weakness in our design, but do not attempt to mitigate this issue.
 
 \subsection{Revocation}
 Capabilities are particularly well suited to ensure spatial memory safety, but they are not inherently designed to solve temporal memory safety issues.
@@ -117,7 +118,7 @@ Van Strydonck et al.\ used linear capabilities to implement revocation in a full
 Because linear capabilities cannot be copied at all, they are a very restrictive way of revoking capabilities.
 For example, they cannot be used to provide multiple parties with simultaneous read-only access, or in a multi-threaded setting.
 
-Our design of borrowed capabilities will provide a new way of revocation which we will discuss in more depth in chapter \ref{chap:discussion}.
+Our design of borrowed capabilities will provide a new way of revocation with some advantages compared to local and linear capabilities which we will discuss in more depth in chapter \ref{chap:discussion}.
 
 \subsection{Sealed Capabilities}
 \label{sec:sealed}

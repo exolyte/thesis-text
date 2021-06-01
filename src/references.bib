@@ -71,10 +71,15 @@ keywords = {capabilities, separation logic, verification, fully abstract compila
   pages={20-37}
 }
 
-@inproceedings{Kan2018AnEO,
-  title={An Executable Operational Semantics for Rust with the Formalization of Ownership and Borrowing},
-  author={Shuanglong Kan and Zhe Chen and David San{\'a}n and Shang-Wei Lin and Yang Liu},
-  year={2018}
+@misc{kan2020executable,
+      title={An Executable Operational Semantics for Rust with the Formalization of Ownership and Borrowing}, 
+      author={Shuanglong Kan and Zhe Chen and David Sanan and Shang-Wei Lin and Yang Liu},
+      year={2020},
+      eprint={1804.07608},
+      howpublished = "\url{https://arxiv.org/abs/1804.07608}"},
+      url={https://arxiv.org/abs/1804.07608},
+      archivePrefix={arXiv},
+      primaryClass={cs.PL}
 }
 
 @inproceedings{xia_cherivoke_2019,
@@ -277,3 +282,79 @@ keywords = {affine type systems, memory management, systems programming, rust}
 }
 
 @INPROCEEDINGS{8049734,  author={Patrignani, Marco and Garg, Deepak},  booktitle={2017 IEEE 30th Computer Security Foundations Symposium (CSF)},   title={Secure Compilation and Hyperproperty Preservation},   year={2017},  volume={},  number={},  pages={392-404},  doi={10.1109/CSF.2017.13}}
+
+@ARTICLE{2019arXiv190300982W,
+       author = {{Weiss}, Aaron and {Gierczak}, Olek and {Patterson}, Daniel and {Matsakis}, Nicholas D. and {Ahmed}, Amal},
+        title = "{Oxide: The Essence of Rust}",
+      journal = {arXiv e-prints},
+     keywords = {Computer Science - Programming Languages},
+         year = 2019,
+        month = mar,
+          eid = {arXiv:1903.00982},
+        pages = {arXiv:1903.00982},
+archivePrefix = {arXiv},
+       eprint = {1903.00982},
+ primaryClass = {cs.PL},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2019arXiv190300982W},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+
+@article{10.1145/3158154,
+author = {Jung, Ralf and Jourdan, Jacques-Henri and Krebbers, Robbert and Dreyer, Derek},
+title = {RustBelt: Securing the Foundations of the Rust Programming Language},
+year = {2017},
+issue_date = {January 2018},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {2},
+number = {POPL},
+url = {https://doi.org/10.1145/3158154},
+doi = {10.1145/3158154},
+abstract = {Rust is a new systems programming language that promises to overcome the seemingly fundamental tradeoff between high-level safety guarantees and low-level control over resource management. Unfortunately, none of Rust's safety claims have been formally proven, and there is good reason to question whether they actually hold. Specifically, Rust employs a strong, ownership-based type system, but then extends the expressive power of this core type system through libraries that internally use unsafe features. In this paper, we give the first formal (and machine-checked) safety proof for a language representing a realistic subset of Rust. Our proof is extensible in the sense that, for each new Rust library that uses unsafe features, we can say what verification condition it must satisfy in order for it to be deemed a safe extension to the language. We have carried out this verification for some of the most important libraries that are used throughout the Rust ecosystem.},
+journal = {Proc. ACM Program. Lang.},
+month = dec,
+articleno = {66},
+numpages = {34},
+keywords = {Rust, logical relations, type systems, concurrency, separation logic}
+}
+
+@misc{rustbook,
+  title = {Validating References with Lifetimes},
+  howpublished = {\url{https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html}},
+  note = {Accessed: 2021-06-01}
+}
+
+@misc{cherillvm,
+  title = {LLVM with CHERI Support},
+  howpublished = {\url{https://github.com/CTSRD-CHERI/llvm-project}},
+  note = {Accessed: 2021-06-01}
+}
+
+@techreport{Waterman:EECS-2011-62,
+    Author = {Waterman, Andrew and Lee, Yunsup and Patterson, David A. and Asanović, Krste},
+    Title = {The RISC-V Instruction Set Manual, Volume I: Base User-Level ISA},
+    Institution = {EECS Department, University of California, Berkeley},
+    Year = {2011},
+    Month = {May},
+    URL = {http://www2.eecs.berkeley.edu/Pubs/TechRpts/2011/EECS-2011-62.html},
+    Number = {UCB/EECS-2011-62}
+}
+
+@article{10.1145/3290384,
+author = {Armstrong, Alasdair and Bauereiss, Thomas and Campbell, Brian and Reid, Alastair and Gray, Kathryn E. and Norton, Robert M. and Mundkur, Prashanth and Wassell, Mark and French, Jon and Pulte, Christopher and Flur, Shaked and Stark, Ian and Krishnaswami, Neel and Sewell, Peter},
+title = {ISA Semantics for ARMv8-a, RISC-v, and CHERI-MIPS},
+year = {2019},
+issue_date = {January 2019},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {3},
+number = {POPL},
+url = {https://doi.org/10.1145/3290384},
+doi = {10.1145/3290384},
+abstract = { Architecture specifications notionally define the fundamental interface between hardware and software: the envelope of allowed behaviour for processor implementations, and the basic assumptions for software development and verification. But in practice, they are typically prose and pseudocode documents, not rigorous or executable artifacts, leaving software and verification on shaky ground.  In this paper, we present rigorous semantic models for the sequential behaviour of large parts of the mainstream ARMv8-A, RISC-V, and MIPS architectures, and the research CHERI-MIPS architecture, that are complete enough to boot operating systems, variously Linux, FreeBSD, or seL4. Our ARMv8-A models are automatically translated from authoritative ARM-internal definitions, and (in one variant) tested against the ARM Architecture Validation Suite.  We do this using a custom language for ISA semantics, Sail, with a lightweight dependent type system, that supports automatic generation of emulator code in C and OCaml, and automatic generation of proof-assistant definitions for Isabelle, HOL4, and (currently only for MIPS) Coq. We use the former for validation, and to assess specification coverage. To demonstrate the usability of the latter, we prove (in Isabelle) correctness of a purely functional characterisation of ARMv8-A address translation. We moreover integrate the RISC-V model into the RMEM tool for (user-mode) relaxed-memory concurrency exploration. We prove (on paper) the soundness of the core Sail type system.  We thereby take a big step towards making the architectural abstraction actually well-defined, establishing foundations for verification and reasoning. },
+journal = {Proc. ACM Program. Lang.},
+month = jan,
+articleno = {71},
+numpages = {31},
+keywords = {Instruction Set Architectures, Theorem Proving, Semantics}
+}
