@@ -58,7 +58,7 @@ _trap_vector:
 
 _exit:
         auipc   t5, 0x1
-        sw      gp tohost, t5
+        sw      gp, tohost, t5
         j       _exit
 
 _user:
@@ -87,7 +87,8 @@ _user:
 
 \section{Comparison to Rust}
 In this section we introduce assembly programs that mirror the functionality of the Rust examples that we discussed in section \ref{sec:rustbackground}.
-\tomi{Make sure to place these examples somewhere in your repo, and clearly indicate in the readme and in the thesis where they are.}
+These examples can also be found in the \textit{examples} directory of the Sail model repository at \url{https://github.com/exolyte/sail-cheri-riscv}.
+
 \subsection{Borrowing}
 We start off with the example that we gave to illustrate borrowing in listing \ref{code:borrowexample}.
 The assembly equivalent of this Rust program is shown in figure \ref{fig:asmborrowexample}.
@@ -119,38 +120,38 @@ The dead parent lifetime token can then be used with the index token in $c5$ to 
 
 \begin{figure}[h]
 \begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
-li             x1 5
-sw.cap         x1 0(c2)    #let mut x = 5;
+li             x1, 5
+sw.cap         x1, 0(c2)     #let mut x = 5;
 
-CCreateToken   c31 c0      #{
-CBorrowMut     c3 c2 c31   #m = &mut x;
-lw.cap         x1 0(c2)
-addi           x1 x1 1
-sw.cap         x1 0(c2)    #*m += 1;
+CCreateToken   c31, c0       #{
+CBorrowMut     c3,  c2, c31  #m = &mut x;
+lw.cap         x1,  0(c2)
+addi           x1,  x1, 1
+sw.cap         x1,  0(c2)    #*m += 1;
 
-CKillToken     c31 c31     #}
-CRetrieveIndex c3 c3 c31
-CMove          c2 c3
+CKillToken     c31, c31      #}
+CRetrieveIndex c3,  c3, c31
+CMove          c2,  c3
 
-CCreateToken   c31 c0      #{
-CBorrowImmut   c5, c2, c31 #let x_shell = &x;
-CMove          c3, c2      #let x_temp = x_shell;
+CCreateToken   c31, c0       #{
+CBorrowImmut   c5,  c2, c31  #let x_shell = &x;
+CMove          c3,  c2       #let x_temp = x_shell;
 CMove          c30, c31
-CCreateToken   c31, c30    #{
-CBorrowImmut   c0, c3, c31 #let s1 = &x_temp;
-CMove          c4, c2      #let x_temp = x_shell;
-CBorrowImmut   c0, c4, c31 #let s2 = &x_temp;
+CCreateToken   c31, c30      #{
+CBorrowImmut   c0,  c3, c31  #let s1 = &x_temp;
+CMove          c4,  c2       #let x_temp = x_shell;
+CBorrowImmut   c0,  c4, c31  #let s2 = &x_temp;
 
-lw.cap         x1, 0(c3)   #println!("{}", s1);
-lw.cap         x1, 0(c4)   #println!("{}", s2);
+lw.cap         x1,  0(c3)    #println!("{}", s1);
+lw.cap         x1,  0(c4)    #println!("{}", s2);
 CMove          c29, c31
 CMove          c31, c30
-lw.cap         x1, 0(c2)   #println!("{}", x_shell);
+lw.cap         x1,  0(c2)    #println!("{}", x_shell);
 
-CKillToken     c29, c29    #}
-CUnlockToken   c31, c29
-CKillToken     c31, c31    #}
-CRetrieveIndex c5, c5, c31
+CKillToken     c29, c29      #}
+CUnlockToken   c31, c31, c29
+CKillToken     c31, c31      #}
+CRetrieveIndex c5,  c5,  c31
 \end{lstlisting}
 \caption{An assembly program illustrating borrowing.}
 \label{fig:asmborrowexample}
@@ -173,26 +174,26 @@ This is done in line 12 through the index token in $c4$.
 The rest of the program is once again similar to the program in the previous section.
 \begin{figure}[h]
 \begin{lstlisting}[style=custASM, numbers = left ,xleftmargin=1.5em]
-li             x1 5
-sw.cap         x1 0(c2)    #let mut x = 5;
-CCreateToken   c30 c0      #{
-CBorrowMut     c3 c2 c30   #m = &mut x;
+li             x1,  5
+sw.cap         x1,  0(c2)   #let mut x = 5;
+CCreateToken   c30, c0      #{
+CBorrowMut     c3,  c2, c30 #m = &mut x;
 
-CCreateToken   c31 c30     #{
-CBorrowImmut   c4 c2 c31   #let s = &(*m);
-lw.cap         x1 0(c2)    #println!("{}", s);
+CCreateToken   c31, c30     #{
+CBorrowImmut   c4,  c2, c31 #let s = &(*m);
+lw.cap         x1,  0(c2)   #println!("{}", s);
 
-CKillToken     c31 c31     #}
-CUnlockToken   c30 c31
-CRetrieveIndex c4 c4, c31
+CKillToken     c31, c31     #}
+CUnlockToken   c30, c30, c31
+CRetrieveIndex c4,  c4, c31
 
-CMove          c31 c30
-lw.cap         x1 0(c4)
-addi           x1 x1 1
-sw.cap         x1 0(c4)    #*m += 1;
+CMove          c31, c30
+lw.cap         x1,  0(c4)
+addi           x1,  x1, 1
+sw.cap         x1,  0(c4)   #*m += 1;
 
-CKillToken     c31 c31     #}
-CRetrieveIndex c3 c3 c31
+CKillToken     c31, c31     #}
+CRetrieveIndex c3,  c3, c31
 \end{lstlisting}
 \caption{An assembly program illustrating reborrowing.}
 \label{fig:asmreborrowexample}
@@ -256,25 +257,25 @@ li             x1, 5
 sw.cap         x1, 0(c2)    #let mut x = 5;
 
 CCreateToken   c31, c0      #{
-CBorrowImmut   c4, c2, c31  #m = &x;
-CMove          c3, c2
+CBorrowImmut   c4,  c2, c31 #m = &x;
+CMove          c3,  c2
 CSplitLT       c30, c31
 
-Move registers c2 and c30   #let handle1 =
-to new thread.              #thread::spawn(...);
-Move registers c3 and c31   #let handle2 =
-to new thread.              #thread::spawn(...);
-...
-Retrieve lifetime fraction  #handle1.join();
-from thread and place it
-in c5.
-Retrieve lifetime fraction  #handle2.join();
-from thread and place it
-in c6.
+#Move registers c2 and c30   #let handle1 =
+#to new thread.              #thread::spawn(...);
+#Move registers c3 and c31   #let handle2 =
+#to new thread.              #thread::spawn(...);
+#...
+#Retrieve lifetime fraction  #handle1.join();
+#from thread and place it
+#in c30.
+#Retrieve lifetime fraction  #handle2.join();
+#from thread and place it
+#in c31.
 
-CMergeLT       c5, c5, c6
-CKillToken     c5 c5        #}
-CRetrieveIndex c4 c4 c5
+CMergeLT       c30, c30, c31
+CKillToken     c30, c30      #}
+CRetrieveIndex c4,  c4,  c30
 \end{lstlisting}
 \caption{An assembly program illustrating the use of lifetime fractions.}
 \label{fig:asmthreadexample}
