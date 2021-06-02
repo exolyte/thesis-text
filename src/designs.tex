@@ -307,6 +307,13 @@ This scheme allows any lifetime token to dynamically become a child of another l
 Reborrowing a capability with the parent's lifetime under the child's lifetime would then be possible by providing the borrow instruction with the borrowed lifetime fraction, as dynamic proof of relationship between the parent and child lifetime.
 Dynamic lifetimes would make the lifetime system more flexible at the cost of extra stores to the borrow table, and the complexity of managing the index tokens for borrowed lifetime token fractions.
 
+\subsection{Fraction Representation}
+In our design we use a simple integer to represent lifetime fractions, starting with a value of zero for a full token and incrementing the fraction field on both fractions when splitting a lifetime token.
+This design is a bit limited in the way fractions can be merged together again since only identical fractions can be merged.
+An alternative fraction representation would be to start with the maximum value of the fraction field for a full lifetime token and then divide it by two to split the token.
+In this case it would be possible to merge fractions by adding the fraction field on both fractions together.
+The disadvantage of this representation is that it reduces the amount of possible fractions and if the fraction field on a token that is being split is not even, the split operation would produce two fractions that are not identical.
+
 \subsection{Key Tokens}
 In our design we use the borrow table and index tokens to store and retrieve capabilities that temporarily need to lose access to a resource.
 An alternative to this scheme that we considered uses another type of separate token called \textit{key tokens}.

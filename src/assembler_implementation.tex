@@ -1,13 +1,13 @@
 \chapter{Assembler Implementation}
 \label{chap:assemblerimpl}
-In order to test our implementation and execute sample programs, we need access to an assembler that supports our newly added instructions. We opted to extend CHERI's fork of the LLVM project that already has support for compiling and assembling code to CHERI supported architectures, including CHERI-RISC-V\ref{Maybe reference Sander Huyghebaert's thesis as a source of information on how to do this (even though most of the actual info actual came from his presentation)}.
+In order to test our implementation and execute sample programs, we need access to an assembler that supports our newly added instructions. We opted to extend CHERI's fork of the LLVM project that already has support for compiling and assembling code to CHERI supported architectures, including CHERI-RISC-V.
+Huyghebaert's thesis on uninitialized capabilities \cite{uninitcap} was used as a reference on how to extend LLVM for this purpose.
+The LLVM fork that supports linear capabilities can be found at \url{https://github.com/exolyte/llvm-project}.
 
 \section{LLVM Modifications}
-The code snippet below shows all of the required modifications to LLVM to compile assembly programs that use the instructions added with borrowed capabilities. This snippet belongs in the \textit{RISCVInstrInfoXCheri.td} file, found in the \textit{llvm/lib/Target/RISCV/} directory, starting from the LLVM repository root\tomi{make sure you refer to this code too, here and/or in the introduction, and make the repo public}.
+The code snippet in figure \ref{code:llvmdefs} shows all of the required modifications to LLVM to compile assembly programs that use the instructions added with borrowed capabilities. This snippet belongs in the \textit{RISCVInstrInfoXCheri.td} file, found in the \textit{llvm/lib/Target/RISCV/} directory, starting from the LLVM repository root.
 
-%TODO mention why we don't do this in sail
-
-%TODO formatting
+\begin{figure}[h]
 \begin{verbatim}
 let Predicates = [HasCheri] in {
 def CGetLinear     : Cheri_r<0x14, "cgetlinear">;
@@ -27,11 +27,16 @@ def CRetrieveIndex : Cheri_rr<0x19, "cretrieveindex", GPCR, GPCR>;
 }
 
 let Predicates = [HasCheri, IsRV64] in
-def LL_CAP_128 : CheriLoad_r<0b00111, "ll.cap", GPCR, GPCRMemAtomic>;
+def LL_CAP_128 : CheriLoad_r<0b00111, "ll.cap", GPCR,
+                             GPCRMemAtomic>;
 
 let Predicates = [HasCheri, IsRV64] in
-def SL_CAP_128 : CheriStore_r<0b01101, "sl.cap", GPCR, GPCRMemAtomic>;
+def SL_CAP_128 : CheriStore_r<0b01101, "sl.cap", GPCR,
+                              GPCRMemAtomic>;
 \end{verbatim}
+\caption{The LLVM definitions of added CHERI instructions}
+\label{code:llvmdefs}
+\end{figure}
 
 The code snippet defines all of the new instructions and specifies how they need to be encoded. Most of the instructions make use of the \textit{Cheri\_r} or \textit{Cheri\_rr} templates, discussed in section \ref{sec:llvm_background}.
 The first argument to these templates, the funct5 or funct7 arguments, express how the mnemonic stated in the second argument should be encoded to bits. The funct5 or funct7 arguments correspond to the encoding as shown in section \ref{sec:sailencoding}. The remainder of the arguments are optional and used to override the defaults in the template. Passing \textit{GPCR} to the template expresses that the corresponding register should be interpreted as a capability register.

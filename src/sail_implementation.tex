@@ -1,6 +1,9 @@
 \chapter{Mapping Borrowed Capabilities to Architecture}
 \label{chap:sailimpl}
-In this chapter we will discuss the concrete implementation of the design outlined in section \ref{sec:maindesign}. First, we will discuss the specifics of linear capabilities which are based on previous work\tomi{reference specifically; did you use Aaron's bachelor's thesis in the end? if so, reference it too.}. We lean heavily on the suggestions outlined in the CHERI specification\cite{UCAM-CL-TR-951} for the implementation of linear capabilities. Then we describe the implementation of borrowed capabilities which are built on top of linear capabilities. Throughout this chapter we keep possible microarchitectural limitations in mind, but we do not discuss them in depth. \tomi{This sounds a bit weird; either refer to the place where you do discuss them, or rephrase this a bit, e.g. ``our focus is not on ...''}The instructions and other architectural elements discussed in this chapter are implemented in the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
+In this chapter we will discuss the concrete implementation of the design outlined in section \ref{sec:maindesign}. First, we will discuss the specifics of the implementation of linear capabilities for which we lean heavily on the suggestions outlined in the CHERI specification\cite{UCAM-CL-TR-951}. Then we describe the implementation of borrowed capabilities which are built on top of linear capabilities.
+Our focus in this chapter is not on the feasability of a microarchitectural implementation.
+We will discuss this topic briefly in chapter \ref{chap:discussion}.
+The instructions and other architectural elements discussed in this chapter are implemented in the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
 The full Sail code can be found at \url{https://github.com/exolyte/sail-cheri-riscv}.
 
 \section{Linear Capabilities}
@@ -17,8 +20,6 @@ Figure \ref{fig:linear_capability} shows the layout of a 128-bit CHERI-RISC-V ca
 \caption{CHERI-RISC-V capability with a linearity bit.}
 \label{fig:linear_capability}
 \end{figure}
-
-%TODO nieuwe fields in rood
 
 When the \textit{linear} bit on a capability is set, it cannot be copied in any way. This restriction has influence on a large amount of instructions in the ISA. We describe the necessary modifications to existing instructions as well as the new instructions that were made in the sections below. We identify four different classes of instructions that require attention. Instructions that modify capabilities, instructions that move capbilities, instructions that load and store capabilities and instructions related to the management of linear capabilities. The encoding of the newly added instructions will be discussed in section \ref{sec:sailencoding}, together with the encoding of the instructions added for borrowed capabilities.
 
@@ -382,16 +383,15 @@ The \textit{CRetrieveIndex} instruction retrieves the capability in the borrow t
 
 \subsection{Instruction Encoding}
 \label{sec:sailencoding}
-The snippet below shows the mapping between instructions and their encoding. As mentioned in section \ref{sec:riscvenc}, all of these instructions use the R-type instruction encoding.
+Figure \ref{code:instencodings} shows the mapping between instructions and their encoding. As mentioned in section \ref{sec:riscvenc}, all of these instructions use the R-type instruction encoding.
 
-\tomi{The remark I left in the RISC-V section was essentially asking for this explanation :) I would just put a one-line summary with a forward reference there.}
 With the exception of the load and store instructions, the instructions that use only two operands have a fixed \textit{func7} field of \textit{1111111} and use the \textit{rs2} field as another func field instead. Their \textit{rs2} field is unique for each instruction and is the way how the instructions are identified. The rest of their encoding consists of the source register number, a fixed \textit{func3} field of \textit{000}, the destination register number and the CHERI-specific opcode of \textit{1011011}.
 
 The instructions that use three operands are identified by their unique \textit{func7} field. Their next field is used for the number of the second source register. Their further encoding is analogous to the set of instructions that was described before, including the fixed \textit{func3} value and the CHERI-specific opcode.
 
 The load and store instructions have a \textit{func7} field of \textit{1111101} and \textit{1111100}, signifying that they are load and store instructions respectively. The type of load or store instruction is identified by the value in their missing operand. \textit{LinearLoadCapCap} does not have a second source register which means that the \textit{rs2} field holding the value of \textit{00111} is unique for load instructions. \textit{LinearStoreCapCap} on the other hand, does not have a destination register which means that the \textit{cd} field holding the value of \textit{01101} is unique for store instructions. The rest of their fields follow the principles as explained above.
 
-%TODO formatting
+\begin{figure}[ht]
 \begin{verbatim}
 CGetLinear(rd, cs1) <->
 0b1111111 @ 0b10100 @ cs1 @ 0b000 @ rd @ 0b1011011
@@ -436,32 +436,9 @@ LinearStoreCapCap(cs2, cs1) <->
 0b1111100 @ cs2 @ cs1 @ 0b000 @ 0b01101 @ 0b1011011
 
 \end{verbatim}
-
-\section{Microarchitectural Considerations}
-\tomi{Consider moving to a more general discussion section.}
-\subsection{Multiple Register Writes}
-Throughout this chapter we occasionally mentioned the need for instructions to write to multiple registers and the microarchitectural difficulties connected to this. In table \ref{table:multiplewrites} we present the instructions that require writing to multiple registers. We make a distinction between instructions that just need to invalidate the tag on capabilities in a specific register and instructions that need to write to the actual contents of a register as we suspect that clearing the tag on a capability in a specific register might be easier to implement in microarchitecture.
-\begin{table}[h]
-\centering
-\begin{tabular}{| c | c |}
-\hline
-Clear Tag & Full Write \\
-\hline
- CMergeCap & CSplitCap \\
- CMergeLT & CSplitLT \\
- CMove & CBorrowImmut \\
- CInvoke & CBorrowMut \\
- & CCreateToken \\
-\hline
-\end{tabular}
-\caption{Instructions with multiple writes.}
-\label{table:multiplewrites}
-\end{table}
-
-\subsection{Borrow Table}
-\label{sec:microarchbt}
-Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory\tomi{Note: in this case, you still trust the entire kernel. You could also trap to a routine in ROM somewhere.}. Such a mechanism used to be present in older CHERI versions in the CCall instruction. %TODO reference this
-In this thesis we do not concern ourselves with the details of the implementation of the borrow table and assume it is provided to us by the hardware.
+\caption{The mapping between Sail functions and binary encodings}
+\label{code:instencodings}
+\end{figure}
 
 %%% Local Variables:
 %%% mode: latex

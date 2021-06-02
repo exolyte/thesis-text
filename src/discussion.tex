@@ -63,4 +63,30 @@ Another interesting simplification is that mutably borrowed capabilities would n
 This borrow operation would result in a borrowed capability with the same permissions as the input capability.
 If the caller wanted to restrict the callee's write access, it could still do that by removing the permissions on the borrowed capability.
 
-\section{Usage of fractions}
+\section{Practical Considerations}
+\subsection{Microarchitecture}
+\subsubsection{Multiple Register Writes}
+Throughout this chapter we occasionally mentioned the need for instructions to write to multiple registers and the microarchitectural difficulties connected to this. In table \ref{table:multiplewrites} we present the instructions that require writing to multiple registers. We make a distinction between instructions that just need to invalidate the tag on capabilities in a specific register and instructions that need to write to the actual contents of a register as we suspect that clearing the tag on a capability in a specific register might be easier to implement in microarchitecture.
+\begin{table}[h]
+\centering
+\begin{tabular}{| c | c |}
+\hline
+Clear Tag & Full Write \\
+\hline
+ CMergeCap & CSplitCap \\
+ CMergeLT & CSplitLT \\
+ CMove & CBorrowImmut \\
+ CInvoke & CBorrowMut \\
+ & CCreateToken \\
+\hline
+\end{tabular}
+\caption{Instructions with multiple writes.}
+\label{table:multiplewrites}
+\end{table}
+
+\subsubsection{Borrow Table}
+\label{sec:microarchbt}
+Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory.
+Such a mechanism used to be present in older CHERI versions in the CReturn instruction \cite{7723791}.
+An alternative would be to trap to a routine in ROM which would remove the need to trust the kernel.
+In this thesis we do not concern ourselves with the details of the implementation of the borrow table and assume it is provided to us by the hardware.
