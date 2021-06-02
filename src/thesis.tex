@@ -69,6 +69,7 @@
 \begin{document}
 
 \begin{preface}
+%TODO
   I would like to thank everybody who kept me busy the last year,
   especially my promoter and my assistants. I would also like to thank the
   jury for reading the text. My sincere gratitude also goes to my wive and
@@ -78,11 +79,40 @@
 \tableofcontents*
 
 \begin{abstract}
-  The \texttt{abstract} environment contains a more extensive overview of
-  the work. But it should be limited to one page.
+Computer programs have been plagued by exploits and bugs relating to manual memory management for a long time.
+One way to prevent such issues is the use of programming languages with strong type systems such as Rust, which has risen in popularity in the past few years.
+These languages use their type system restrictions to statically prevent runtime memory issues at compile time.
+However when a program written in such a language is compiled, it usually gets compiled to an assembly language that doesn't have any of these safety guarantees.
+This may open up the program to exploits if it is linked against a library that was written in a language that doesn't have the same safety guarantees.
+Capability machine ISAs offer a security primitive called capabilities: unforgeable tokens that represent authority over memory.
+Capabilities are very effective at preventing spatial memory issues at runtime, but they don't inherently provide countermeasures against the temporal memory issues that languages with strong type systems prevent.
 
-  \lipsum[1]
+In this thesis, we explore borrowed capabilities: a novel type of capability that is designed to mirror the Rust semantics at the ISA level.
+The idea is to bind capabilities to a specific lifetime and allow those capabilities to be used only when a separate lifetime token with that lifetime is present in a specific register.
+This allows software to create scopes in the form of lifetime tokens, bind capabilities to those scopes and end those scopes by unsetting a bit on the lifetime tokens.
+In this context, borrowed capabilities could be seen as a general way of providing a new method for revocation on capability machines.
+This thesis proposes a design for borrowed capabilities, an implementation in the ISA specification language Sail and an extension to the LLVM assembler.
+The design is evaluated by constructing example assembly programs that mirror the behavior of certain simple Rust programs.
 \end{abstract}
+
+\selectlanguage{dutch} 
+\begin{abstract}
+Computerprogramma's worden al lange tijd geplaagd door kwetsbaarheden en bugs die relateren tot handmatig geheugenbeheer.
+Een manier om zulke problemen te voorkomen is het gebruik van programmeertalen met sterke typesystemen zoals Rust, dat in de afgelopen paar jaar populair is geworden.
+Deze talen gebruiken de beperkingen opgelegd door hun typesystemen om op een statische manier runtime geheugenproblemen op het moment van compileren te voorkomen.
+Wanneer een programma geschreven in zo'n taal echter wordt gecompileerd, wordt het gewoonlijk gecompileerd naar een assemblytaal die geen van deze veiligheidsgaranties heeft.
+Dit kan het programma open laten voor kwetsbaarheden als het gelinkt is tegen een library die geschreven is in een taal zonder dezelfde veiligheidsgaranties.
+Capability machine ISAs bieden een veiligheidsprimitief genaamd capabilities aan: onvervalsbare tokens die authoriteit over geheugen voorstellen.
+Capabilities zijn zeer effectief in het voorkomen van ruimtelijke geheugenproblemen, maar ze bieden geen inherente tegenmaatregelen aan tegen tijdelijke geheugenproblemen die talen met sterke typesystemen voorkomen.
+
+In deze thesis onderzoeken we borrowed capabilities, een nieuw type van capability dat ontworpen is om Rust semantiek op het niveau van de ISA voor te stellen.
+Het is idee is om capabilities aan een specifieke lifetime te binden en om die capabilities enkel gebruikt te laten worden wanneer een apart lifetime token met hun lifetime aanwezig is in een specifiek register.
+Dit laat software toe om scopes te definiëren in de form van lifetime tokens, capabilities aan deze scopes te binden en de scopes te beëindigen door een bit op de lifetime tokens af te zetten.
+In deze context kunnen borrowed capabilities gezien worden als een nieuwe algemene manier om revocatie op capability machines te voorzien.
+Deze thesis stelt een design voor borrowed capabilities voor, een implementatie in de ISA specificatietaal Sail en een uitbreiding aan de LLVM assembler.
+Het design wordt geëvalueerd door voorbeeld assembly programma's te construeren die het gedrag van bepaalde simpele Rust programma's nabootsen.
+\end{abstract}
+\selectlanguage{english}
 
 % A list of figures and tables is optional
 %\listoffigures
