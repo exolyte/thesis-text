@@ -105,6 +105,7 @@ When a caller delegates a linear capability to a callee and the callee then retu
 Two proposed instructions that relate to the splitting and merging of linear capabilities with congruent sections of memory have been found to be difficult to implement in microarchitecture because they have to write to two different registers in the same instruction. For the work in this thesis we rely on these instructions. We acknowledge these difficulties as a weakness in our design, but do not attempt to mitigate this issue.
 
 \subsection{Revocation}
+\label{sec:backgroundcherirevocation}
 Capabilities are particularly well suited to ensure spatial memory safety, but they are not inherently designed to solve temporal memory safety issues.
 One important concept in preventing temporal memory safety issues is \textit{revocation}; repealing the access an untrusted stakeholder has to a certain resource.
 Prior work has attempted to solve the revocation issue in several ways.

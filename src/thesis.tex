@@ -60,30 +60,35 @@
 \begin{document}
 \selectlanguage{english}
 \begin{preface}
-%TODO
-  I would like to thank everybody who kept me busy the last year,
-  especially my promoter and my assistants. I would also like to thank the
-  jury for reading the text. My sincere gratitude also goes to my wive and
-  the rest of my family.
+I would like to thank everyone who supported me throughout the last year.
+My mentor Thomas for always giving me good advice and suggestions as well as making sure I actually kept working on my thesis.
+My promotor Dominique for regularly checking in on my progress and helping me see the bigger picture.
+My parents who looked after me.
+My friends who kept me company by playing games with me.
+
+As this thesis also marks the end of my studies at KU Leuven, I would also like to thank all the people that I encountered throughout my time in Leuven, in particular the following people.
+The staff of Alma 3 who kept me fed.
+Mark Peeters for the interesting conversations at said Alma 3.
 \end{preface}
 
 \tableofcontents*
 
 \begin{abstract}
-Computer programs have been plagued by exploits and bugs relating to manual memory management for a long time.
+Computer programs have been plagued by exploits and bugs related to manual memory management for a long time.
 One way to prevent such issues is the use of programming languages with strong type systems such as Rust, which has risen in popularity in the past few years.
 These languages use their type system restrictions to statically prevent runtime memory issues at compile time.
 However when a program written in such a language is compiled, it usually gets compiled to an assembly language that doesn't have any of these safety guarantees.
 This may open up the program to exploits if it is linked against a library that was written in a language that doesn't have the same safety guarantees.
+
 Capability machine ISAs offer a security primitive called capabilities: unforgeable tokens that represent authority over memory.
 Capabilities are very effective at preventing spatial memory issues at runtime, but they don't inherently provide countermeasures against the temporal memory issues that languages with strong type systems prevent.
 
 In this thesis, we explore borrowed capabilities: a novel type of capability that is designed to mirror the Rust semantics at the ISA level.
 The idea is to bind capabilities to a specific lifetime and allow those capabilities to be used only when a separate lifetime token with that lifetime is present in a specific register.
 This allows software to create scopes in the form of lifetime tokens, bind capabilities to those scopes and end those scopes by unsetting a bit on the lifetime tokens.
-In this context, borrowed capabilities could be seen as a general way of providing a new method for revocation on capability machines.
+In this context, borrowed capabilities could be seen as a way of providing a new general method for revocation on capability machines.
 This thesis proposes a design for borrowed capabilities, an implementation in the ISA specification language Sail and an extension to the LLVM assembler.
-The design is evaluated by constructing example assembly programs that mirror the behavior of certain simple Rust programs.
+The design is evaluated by constructing example assembly programs that mirror the behavior of certain simple Rust programs and by reasoning about the cost of implementing borrowed capabilities.
 \end{abstract}
 
 \selectlanguage{dutch} 
@@ -101,7 +106,7 @@ Het is idee is om capabilities aan een specifieke lifetime te binden en om die c
 Dit laat software toe om scopes te definiëren in de form van lifetime tokens, capabilities aan deze scopes te binden en de scopes te beëindigen door een bit op de lifetime tokens af te zetten.
 In deze context kunnen borrowed capabilities gezien worden als een nieuwe algemene manier om revocatie op capability machines te voorzien.
 Deze thesis stelt een design voor borrowed capabilities voor, een implementatie in de ISA specificatietaal Sail en een uitbreiding aan de LLVM assembler.
-Het design wordt geëvalueerd door voorbeeld assembly programma's te construeren die het gedrag van bepaalde simpele Rust programma's nabootsen.
+Het design wordt geëvalueerd door voorbeeld assembly programma's te construeren die het gedrag van bepaalde simpele Rust programma's nabootsen en door te redeneren over de kost van het implementeren van borrowed capabilities.
 \end{abstract}
 \selectlanguage{english}
 
@@ -117,16 +122,18 @@ Het design wordt geëvalueerd door voorbeeld assembly programma's te construeren
 \begin{flushleft}
   \renewcommand{\arraystretch}{1.1}
   \begin{tabularx}{\textwidth}{@{}p{12mm}X@{}}
+    DDC   & Default Data Capability \\
     ISA   & Instruction Set Architecture \\
     OBS   & Ownership and Borrow System \\
     PCC   & Program Counter Capability \\
-    DDC   & Default Data Capability \\
+    TCB   & Trusted Computing Base \\
   \end{tabularx}
 \end{flushleft}
 \section*{Symbols}
 \begin{flushleft}
   \renewcommand{\arraystretch}{1.1}
   \begin{tabularx}{\textwidth}{@{}p{12mm}X@{}}
+    %TODO
     $c$   & Speed of light \\
     $E$   & Energy \\
     $m$   & Mass \\

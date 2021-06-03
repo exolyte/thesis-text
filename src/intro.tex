@@ -21,7 +21,7 @@ One of the most important principles of this system is the principle of ``aliasi
 This prevents concurrent write accesses and concurrent read and write access to a resource in memory, which ensures the absence of things like data races.
 
 However, when a Rust program is compiled, it is usually converted into an unsafe assembly language that does not have any of these safety guarantees.
-This might, for example, open the programs up to attacks on the assembly level if they are linked with libraries that are not written in a programming language with the same safety guarantees.
+This might, for example, open the program up to attacks on the assembly level if it is linked with libraries that are not written in a programming language with the same safety guarantees.
 In this thesis we explore an extension to the capability machine architecture CHERI in order to provide support on the assembly level for the safety guarantees that the Rust programming language offers.
 This could then be used as the target for a \textit{secure compiler}, a compiler that ensures that any attack against the target language is possible if and only if it is possible against the source language \cite{8049734}.
 

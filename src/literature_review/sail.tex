@@ -34,7 +34,33 @@ CHERI-RISC-V introduces another 32 capability registers, named \textit{c0} throu
 As mentioned before, in this thesis we work with a shared register file which means that there are only 32 registers and each register can be interpreted as an integer or as a capability register.
 Like \textit{x0}, \textit{c0} contains a fixed value which is called the null capability, which has most of its fields set to zero.
 
-%TODO explain opcodes used in our examples?
+\subsection{Instructions}
+In this section in table \ref{table:riscvinsts} we explain some of the RISC-V and CHERI-RISC-V instructions that we will use for our examples in chapter \ref{chap:evaluation} and that are not part of our design for borrowed capabilities.1
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{|l|l|p{8cm}|}
+\hline
+Name & Operands & Explanation \\
+\hline
+la & rd, address & Load \textit{address} into \textit{rd}. \\
+csrw & sr, rs1 & Write the value in \textit{rs1} to the special register \textit{sr}. \\
+mret & & Switch from machine to user mode and jump to the address in the \textit{mepc} special register.\\
+li & rd, integer & Load \textit{integer} into \textit{rd}. \\
+j & address & Jump to \textit{address}. \\
+addi & rd, rs1, integer & Load the value in \textit{rs1} into \textit{rd}, added with {integer}. \\
+\hline
+CSpecialRW & cd, csr, cs1 & Load the value in the capability special register \textit{csr} into {cd} and replace \textit{csr} with {cs1}. \\
+CAndPerm & cd, cs1, rs2 & Perform a bitwise and on the permissions of \textit{cs1} with \textit{rs2} and load the result into \textit{cd}. \\
+CIncOffset & cd, cs1, rs2 & Increase the offset on \textit{cs1} by \textit{rs2} and load the result into \textit{cd}. \\
+CSetBounds & cd, cs1, rs2 & Set base of \textit{cs1} to its current address and the length to \textit{rs2} and load the result into \textit{cd}. \\
+sw.cap & rs1, cs2 & Store the word in \textit{rs1} to the memory \textit{cs2} points to. \\
+lw.cap & rd, cs1 & Load the word to which \textit{cs1} points into \textit{rd}. \\
+\hline
+\end{tabular}
+\caption{Instruction explanations}
+\label{table:riscvinsts}
+\end{table}
 
 \subsection{LLVM}
 \label{sec:llvm_background}
