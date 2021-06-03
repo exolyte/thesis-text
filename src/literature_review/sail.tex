@@ -1,16 +1,16 @@
 \section{RISC-V \& SAIL}
 RISC-V is an open RISC ISA created by researchers at Berkeley University \cite{Waterman:EECS-2011-62}. Its open nature has made it a popular ISA for education and research purposes with a large amount of available tooling. In this thesis we use CHERI's extension of the RISC-V ISA, called CHERI-RISC-V.
 
-\subsection{Instruction layout}
+\subsection{Instruction Layout}
 \label{sec:riscvenc}
 RISC-V offers multiple instruction types that differ in the way their bits are interpreted.
-In this thesis we will only use R-type instructions, shown in figure \ref{fig:rtypeinst}.
+For the purpose of implementing borrowed capabilities, we only need R-type instructions, shown in figure \ref{fig:rtypeinst}.
 
 \begin{figure}[h]
 \centering
 \definecolor{lightgray}{gray}{0.8}
 \begin{bytefield}[endianness=big, bitwidth=1em]{32}
-    \bitheader{32,25,24,20,19,15,14,12,11,7,6,0} \\
+    \bitheader{31,25,24,20,19,15,14,12,11,7,6,0} \\
     \bitbox{7}{funct7} & \bitbox{5}{rs2} & \bitbox{5}{rs1} & \bitbox{3}{funct3} & \bitbox{5}{rd} & \bitbox{7}{opcode} \\
 \end{bytefield}
 \caption{R-type RISC-V instruction.}
@@ -21,7 +21,7 @@ An R-type instruction consists of 6 different fields, each with their own meanin
 In CHERI, the \textit{rs2} field is also used as an extra funct field for some instructions, called \textit{funct5}.
 This is the case for instructions that use only one source register and a destination register.
 We will expand on the usage of this field in section \ref{sec:sailencoding}.
-Because CHERI has a distinction between integer and capability registers, CHERI introduces the \textit{cd}, \textit{cs1} and \textit{cs2} notation.
+Because CHERI makes a distinction between integer and capability registers, CHERI introduces the \textit{cd}, \textit{cs1} and \textit{cs2} notation.
 The \textit{c} registers refer to capability registers while \textit{r} registers refer to integer registers.
 This distinction is merely cosmetical as the underlying bits just represent a register number and are agnostic to whether the field is interpreted as an integer or capability register.
 
@@ -35,7 +35,7 @@ As mentioned before, in this thesis we work with a shared register file which me
 Like \textit{x0}, \textit{c0} contains a fixed value which is called the null capability, which has most of its fields set to zero.
 
 \subsection{Instructions}
-In this section in table \ref{table:riscvinsts} we explain some of the RISC-V and CHERI-RISC-V instructions that we will use for our examples in chapter \ref{chap:evaluation} and that are not part of our design for borrowed capabilities.1
+In table \ref{table:riscvinsts} we explain some of the RISC-V and CHERI-RISC-V instructions that we will use for our examples in chapter \ref{chap:evaluation} and that are not part of our design for borrowed capabilities.
 
 \begin{table}[ht]
 \centering
@@ -48,17 +48,17 @@ csrw & sr, rs1 & Write the value in \textit{rs1} to the special register \textit
 mret & & Switch from machine to user mode and jump to the address in the \textit{mepc} special register.\\
 li & rd, integer & Load \textit{integer} into \textit{rd}. \\
 j & address & Jump to \textit{address}. \\
-addi & rd, rs1, integer & Load the value in \textit{rs1} into \textit{rd}, added with {integer}. \\
+addi & rd, rs1, integer & Load the value in \textit{rs1} into \textit{rd}, added with \textit{integer}. \\
 \hline
 CSpecialRW & cd, csr, cs1 & Load the value in the capability special register \textit{csr} into {cd} and replace \textit{csr} with {cs1}. \\
 CAndPerm & cd, cs1, rs2 & Perform a bitwise and on the permissions of \textit{cs1} with \textit{rs2} and load the result into \textit{cd}. \\
 CIncOffset & cd, cs1, rs2 & Increase the offset on \textit{cs1} by \textit{rs2} and load the result into \textit{cd}. \\
 CSetBounds & cd, cs1, rs2 & Set base of \textit{cs1} to its current address and the length to \textit{rs2} and load the result into \textit{cd}. \\
 sw.cap & rs1, cs2 & Store the word in \textit{rs1} to the memory \textit{cs2} points to. \\
-lw.cap & rd, cs1 & Load the word to which \textit{cs1} points into \textit{rd}. \\
+lw.cap & rd, cs1 & Load the word to which \textit{cs1} points to into \textit{rd}. \\
 \hline
 \end{tabular}
-\caption{Instruction explanations}
+\caption{Instruction explanations.}
 \label{table:riscvinsts}
 \end{table}
 
@@ -68,8 +68,8 @@ While several compilers that target RISC-V exist, the only compiler that targets
 The LLVM project offers a large amount of tools related to compiling such as a compiler for several programming languages, a linker, an assembler, a disassembler and much more.
 In this thesis we will extend CHERI's fork of the LLVM project to support the new instructions we introduce and we will use LLVM's assembler to turn assembly source files into executable binary files.
 
-The code snippet in figure \ref{fig:insttemplate} shows the instruction definition for the CHERI function \textit{CGetPerm} and the template used by that definition.
-The template accepts a 5 bit argument \textit{funct5}, a string with the instruction name and an indication whether the used registers are integer or capability register for which defaults are provided.
+The code snippet in figure \ref{fig:insttemplate} shows the instruction definition for the CHERI function \textit{CGetPerm} which loads the permissions of \textit{cs1} into \textit{rd} and shows the template used by that definition.
+The template accepts a 5 bit argument \textit{funct5}, a string with the instruction name and an indication whether the used registers are integer or capability registers for which defaults are provided.
 These arguments are then mapped to an R-type instruction with a fixed \textit{funct7} field of 0x7f, an \textit{rs2} field with the provided \textit{funct5} argument, a fixed \textit{funct3} field of 0, a fixed opcode field with the CHERI-specific opcode of \textit{1011011} and variable \textit{rd} and \textit{rs1} fields depending on the registers that are used for the instruction.
 The \textit{CGetPerm} instruction provides the template with a \textit{funct5} field of 0, an instruction string of \textit{cgetperm} and keeps the default register interpretation of an integer destination register and a capability source register.
 While other instruction templates exist, they work in a similar way so we won't cover them in detail.
@@ -84,7 +84,7 @@ class Cheri_r<bits<5> funct5, string opcodestr, RegisterClass
 
 def CGetPerm : Cheri_r<0x0, "cgetperm">;
 \end{verbatim}
-\caption{An LLVM instruction template}
+\caption{An LLVM instruction template.}
 \label{fig:insttemplate}
 \end{figure}
 
@@ -99,7 +99,7 @@ First the instruction name as well as the arguments to the instruction function 
 Next is the function that describes what happens when \textit{CSetFlags} is executed.
 The function definition shows that a capability destination register, a capability source register and an integer source register are used.
 The function starts by reading the values in the source registers.
-The C(regidx) function can be used to read from or write to the capability register with the specified register index while the X(regidx) function does the same for integer registers.
+The \textit{C(regidx)} function can be used to read from or write to the capability register with the specified register index while the \textit{X(regidx)} function does the same for integer registers.
 Then the function inspects some of the fields from the given source capability and throws an exception if those fields contain specific values.
 If an exception is not thrown, the function creates a new capability based on the values in the source registers and writes that new capability to the destination register.
 
@@ -120,7 +120,7 @@ function clause execute(CSetFlags(cd, cs1, rs2)) = {
   }
 }
 \end{verbatim}
-\caption{A snippet of Sail code}
+\caption{A snippet of Sail code.}
 \label{fig:sailcode}
 \end{figure}
 

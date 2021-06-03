@@ -37,16 +37,18 @@
 
 \chapter{Designs}
 \label{chap:design}
-As mentioned in chapter \ref{cha:intro}, the goal of this thesis is to provide support for the Rust safety guarantees on the hardware level as an extension of the CHERI architecture. Several different design directions were explored, each with their own set of tradeoffs to be made. In this chapter we give an overview of the main design and its tradeoffs as well as an argument for its correctness by suggesting how the OBS invariants introduced in section \ref{sec:obsinvariants} can be held. Following that, we give an explanation of the other explored directions along with the reasons these directions were not chosen.
+As mentioned in chapter \ref{cha:intro}, the goal of this thesis is to provide support for the Rust safety guarantees on the hardware level as an extension of the CHERI architecture. Several different design directions were explored, each with their own set of tradeoffs to be made. In this chapter we give an overview of the main design and its tradeoffs as well as an argument for its correctness by suggesting how the OBS invariants introduced in section \ref{sec:obsinvariants} can be held. Following that, we give an explanation of the other explored directions along with the reasons that these directions were not chosen.
 
 \section{Main Design Overview}
 \label{sec:maindesign}
-In this design linear capabilities will be used as a starting point. Linear capabilities correspond naturally with Rust's linear ownership system where owners of a value can only be moved, not copied. Implementing Rust owner variables as linear capabilities allows us to use this property to easily guarantee the \textit{unique owner invariant} of the OBS invariants introduced in section \ref{sec:obsinvariants}: if an owner is implemented as a linear capability, it cannot be copied and is thus unique.
-
+In this design linear capabilities will be used as a starting point.
+Linear capabilities correspond naturally with Rust's linear ownership system where owners of a value can only be moved, not copied.
+%Implementing Rust owner variables as linear capabilities allows us to use this property to easily guarantee the \textit{unique owner invariant} of the OBS invariants introduced in section \ref{sec:obsinvariants}: if an owner is implemented as a linear capability, it cannot be copied and is thus unique.
 Linear capabilities thus represent unique ownership, but can be \emph{borrowed}, transforming them into borrowed capabilities instead, and allowing for linearity to be broken temporarily, and e.g.\ a read-only capability to be shared between multiple functions.
 Separate linear tokens, called \emph{lifetime tokens}, define unforgeable lifetimes that linear capabilities are bound to during this borrowing process.
-Borrowed capabilities can only be dereferenced while a live (as opposed to dead), matching lifetime token is present in a specific register.
+Borrowed capabilities can only be dereferenced while a living (as opposed to dead), matching lifetime token is present in a specific register.
 Ending the lifetime corresponds to revocation, meaning that all borrowed capabilities that were bound to the lifetime are now unable to be used.
+This makes it safe for the owner to regain full access to the resource.
 To mirror Rust, we provide for two types of borrowing; mutable and immutable borrowing, depending on whether the capability requires write access or not.
 
 To describe our design more precisely, we define some basic syntactic constructs for our capability machine in fig.\ \ref{fig:opsem_syntax}.
@@ -217,11 +219,11 @@ The semantics of the new instructions are shown in fig.\ \ref{fig:opsem_instrs}.
 %\vspace{-0.5cm}
 \end{figure}
 
-We represent the fields of lifetime tokens as a tuple of the form $\X{lt}(s,\V{lid},\V{cid},\V{pid},f)$ representing the state, lifetime id, child id, parent id and fraction fields.
+While we will show how lifetime tokens map to capabilities in chapter \ref{chap:sailimpl}, in this chapter we represent the fields of lifetime tokens as a tuple of the form $\X{lt}(s,\V{lid},\V{cid},\V{pid},f)$ representing the state, lifetime id, child id, parent id and fraction fields.
 The state field indicates whether the lifetime associated with the lifetime token is alive (\perm{A}) or dead (\perm{D}).
-The first case of the \instr{CCreateToken} instruction in fig.\ \ref{fig:opsem_instrs} creates a normal standalone alive lifetime token.
+The first case of the \instr{CCreateToken} instruction in fig.\ \ref{fig:opsem_instrs} creates a normal standalone living lifetime token.
 The second case will be explained later in this section.
-Alive lifetime tokens are linear and can be used to borrow new capabilities, and dereference existing borrowed capabilities when placed in a specific register.
+Living lifetime tokens are linear and can be used to borrow new capabilities, and dereference existing borrowed capabilities when placed in a specific register.
 A lifetime token can be irreversibly killed with the \instr{CKillToken} instruction.
 This changes the state to dead which results in the lifetime token losing its linearity.
 In this state, a lifetime token cannot be used anymore to borrow capabilities or dereference borrowed capabilities, but it does serve as a proof of the lifetime's end that can be freely copied and passed around.
@@ -231,7 +233,7 @@ The fraction, parent id and child id fields will be discussed later in this sect
 
 A lifetime token can be used to borrow a capability through the \instr{CBorrowImmut} or \instr{CBorrowMut} instructions, for immutable and mutable borrows respectively.
 What happens in these borrow operations is that the capability that gets borrowed is stored in a table that we call the \emph{borrow table} ($bt$).
-The source register is overwritten with the borrowed capability.
+The source register holding the original capability is overwritten with the borrowed capability.
 This borrowed capability points to the same region of memory as the original capability but it differs in a few ways.
 First, the borrowed capability holds the lifetime id of the lifetime it was borrowed under in its otype field.
 This is necessary in order to check whether the used lifetime token matches the borrowed capability when dereferencing it.
@@ -253,6 +255,7 @@ Fractions are represented as an integer where a fraction of 0 signifies the full
 Splitting a lifetime token with fraction $f$ results in two copies of the lifetime token with respective fractions $f_1$ and $f_2$, such that $f_1 = f_2 = f + 1$.
 Both fractions can still be used to borrow capabilities or dereference borrowed capabilities.
 Merging identical lifetime tokens is possible with the \instr{CMergeToken} instruction.
+This instruction consumes both fractions to create the same lifetime token, but with a decremented fraction field.
 % Splitting a lifetime token increments the value in the fraction field on both resulting tokens, while merging a lifetime token decrements the value in the fraction field.
 To prevent dead and alive lifetime tokens of the same lifetime id being present at the same time, only unfractured lifetime tokens can be killed.
 % The fraction system allows software to split a lifetime token and distribute the fractions and corresponding (immutably) borrowed capabilities to different threads for simultaneous read access.
@@ -273,15 +276,19 @@ The parent token can then be killed or receive a new sublifetime.
 Lifetime hierarchies allow for safe reborrowing through the normal borrow operations \instr{CBorrowImmut} and \instr{CBorrowMut}.
 The main requirement for reborrowing borrowed capabilities is that the parent id on the used lifetime token matches the lifetime id of the capability that is being reborrowed.
 This ensures that a reborrow happens under a sublifetime and thus that the reborrow has a shorter lifetime than the original borrow.
-One issue with lifetime hierarchies is that a lifetime token can only have one parent, which makes it impossible to reborrow multiple capabilities with different lifetimes under the same lifetime, something that is allowed in Rust.
-We will address this further in section \ref{sec:dynamiclifetimes}.
 
 \subsection{Advantages}
 The main advantage of this design is that it mimicks the Rust semantics fairly closely and that it is relatively easy to fit into the CHERI architecture. While some fields of the CHERI capability layout have to be partially repurposed, this design can be implemented without using additional bits and without making deep changes to the CHERI architecture.
 
 \subsection{Disadvantages}
 \label{sec:designdisadvantages}
-Issues with the design pertain to differences with Rust semantics. In Rust when an owner is immutably borrowed, the owner can still be used to read, however, this is impossible if the owner is locked away. A solution would be to borrow the owner for local use and then reborrow under a sublifetime. Another issue is that in this design reborrows can only occur under direct lifetime children while in Rust any lifetime that is contained within another lifetime can be used to reborrow. This can also be solved by inserting extra borrows, at the cost of performance.
+Issues with the design pertain to differences with Rust semantics. In Rust when an owner is immutably borrowed, the owner can still be used to read.
+However, this is impossible if the owner is locked away in the borrow table. A solution would be to borrow the owner for local use and then reborrow under a sublifetime.
+
+Another issue is that in this design reborrows can only occur under direct lifetime children while in Rust any lifetime that is contained within another lifetime can be used to reborrow. This can also be solved by inserting extra borrows, at the cost of performance.
+
+An issue with lifetime hierarchies is that a lifetime token can only have one parent, which makes it impossible to reborrow multiple capabilities with different lifetimes under the same lifetime, something that is allowed in Rust.
+We will address this further in section \ref{sec:dynamiclifetimes}.
 
 Another concern is the presence of operations that require writing to multiple registers which might be hard to implement in microarchitecture. We keep this limitation in mind, but do not attempt to mitigate it.
 
@@ -289,23 +296,23 @@ Another concern is the presence of operations that require writing to multiple r
 \begin{enumerate}
     \item \textit{Unique owner invariant}: holds as a result of owner capabilities being linear.
     \item \textit{Lifetime inclusion invariant}: holds as a result of capabilities not being able to be retrieved from the borrow table unless a dead lifetime token is presented.
-    \item \textit{Lifetime disjoint invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any further borrows.
-    \item \textit{Writing permission invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any dereferences.
-    \item \textit{Reading and writing permissions invariant}: holds as a result of capabilities being locked away in the hardware table, preventing any dereferences.
+    \item \textit{Lifetime disjoint invariant}: holds as a result of capabilities being locked away in the borrow table, preventing any further borrows.
+    \item \textit{Writing permission invariant}: holds as a result of capabilities being locked away in the borrow table, preventing any dereferences.
+    \item \textit{Reading and writing permissions invariant}: holds as a result of capabilities being locked away in the borrow table, preventing any dereferences.
 \end{enumerate}
 
-\section{Variations on the Current Design}
+\section{Variations on the Main Design}
 In this section we explain some variations on the main design that was discussed above.
 
 \subsection{Dynamic Lifetimes}
 \label{sec:dynamiclifetimes}
-At the end of section \ref{sec:maindesign} we mentioned a problem with lifetime hierarchies in that lifetime tokens are unable to have multiple parent lifetimes.
+We mentioned a problem with lifetime hierarchies in that lifetime tokens are unable to have multiple parent lifetimes.
 A solution to this that we considered, but did not implement due to time constraints is called \textit{dynamic lifetimes}.
 This involves borrowing a fraction of the parent lifetime under the child lifetime, and thereby storing this fraction in the borrow table.
 Since the fraction of the parent that is needed to kill it can only be retrieved from the borrow table with the help of the dead child lifetime token, it is ensured that the parents' lifetime is longer than the child's.
 This scheme allows any lifetime token to dynamically become a child of another lifetime token.
 Reborrowing a capability with the parent's lifetime under the child's lifetime would then be possible by providing the borrow instruction with the borrowed lifetime fraction, as dynamic proof of relationship between the parent and child lifetime.
-Dynamic lifetimes would make the lifetime system more flexible at the cost of extra stores to the borrow table, and the complexity of managing the index tokens for borrowed lifetime token fractions.
+Dynamic lifetimes would make the lifetime system more flexible at the cost of extra stores to the borrow table, and the complexity of managing the index tokens for the fractions that were stored in the borrow table.
 
 \subsection{Fraction Representation}
 In our design we use a simple integer to represent lifetime fractions, starting with a value of zero for a full token and incrementing the fraction field on both fractions when splitting a lifetime token.
@@ -317,24 +324,25 @@ The disadvantage of this representation is that it reduces the amount of possibl
 \subsection{Key Tokens}
 In our design we use the borrow table and index tokens to store and retrieve capabilities that temporarily need to lose access to a resource.
 An alternative to this scheme that we considered uses another type of separate token called \textit{key tokens}.
-Instead of storing capabilities in a borrow table, this scheme would simply reduce permissions on them.
-Because they need to regain those permissions after a borrow, the permissions are stored in the key token that inactive by default.
+Instead of storing capabilities in a borrow table, this scheme would simply reduce the permissions on them.
+Because they need to regain those permissions after a borrow, the permissions are stored in the key token that is inactive by default.
 A dead lifetime token can be used to make the key token active, allowing it to be used to restore the permissions on the original capability.
 The advantage of this scheme is that the original capability remains present and if it was for example immutably borrowed, it can still be used to read.
+This scheme also avoids the need for a borrow table.
 The big issue with actually implementing this design is that key tokens need to be uniquely linked to one specific capability which requires extra bits on the capability.
 For normal borrows the otype field could be used to store some sort of id, but this would not work for reborrows as the otype field is already being used for the lifetime id.
-In the end, while this design has a lot of upsides, linking key tokens with capabilities is complicated and the alternative of a borrow table with index tokens is a lot more simple.
+In the end, while this design has a lot of upsides, linking key tokens with capabilities turned out to be complicated and the alternative of a borrow table with index tokens is a lot more simple.
 
 \section{Different Designs}
-In this section we explain explored designs that are completely different from the main design.
+In this section we explain two candidate designs that are completely different from the main design.
 
 \subsection{Tree Structure with Reference Counting}
 In this design, every capability has its own unique id and a reference to its parent's id where a parent id of zero signifies an owner and any other id signifies a borrowed capability.
-All capabilities have a field that indicates whether the capability was borrowed mutable and a reference counting field that indicates how many times they were immutably borrowed.
+All capabilities have a field that indicates whether a mutable borrow of the capability exists and a reference counting field that indicates how many immutable borrows of the capability exist.
 Depending on the values in these fields, a capability loses certain permissions such as write or read access or the ability to be borrowed again.
 The fields on a parent can be altered by returning borrowed capabilities to their parent which would remove the mutably borrowed field or decrement the immutable borrow reference count.
 An advantage of this scheme is that it supports reborrows inherently and is conceptually fairly simple.
-The big disadvantages are the large amount of bits required for the id's and reference counts and the fact that immutably borrowed capabilities need to be linear to preserve the correctness of the reference count on the parent.
+The big disadvantages are the large amount of bits required for the id's and reference counts, and the fact that immutably borrowed capabilities need to be linear to preserve the correctness of the reference count on the parent.
 An interesting thing to note is that lifetime hierarchies show parallels with this design and move parts of it to a separate token.
 
 \subsection{Indirection}
@@ -342,5 +350,5 @@ One design that we did not think about in great depth uses indirection for borro
 In this scheme, borrowed or reborrowed capabilities would point to their parent capability, either in memory or in a separate table.
 Borrowed capabilities and their parents would hold a unique id which would need to match in order to follow the chain of indirection.
 Changing the id on a capability would correspond to ending the lifetime on all of its borrowed capabilities.
-This obvious flaws with this design are the performance impact and the lack of flexibility since the chain of indirections needs to be upheld.
+The obvious flaws with this design are the performance impact and the lack of flexibility since the chain of indirections needs to be upheld.
 It also differs from Rust semantics in a few ways.
