@@ -2,8 +2,8 @@
 \label{chap:sailimpl}
 In this chapter we will discuss the concrete implementation of the design outlined in section \ref{sec:maindesign}. First, we will discuss the specifics of the implementation of linear capabilities for which we lean heavily on the suggestions outlined in the CHERI specification\cite{UCAM-CL-TR-951}. Then we describe the implementation of borrowed capabilities which are built on top of linear capabilities.
 Our focus in this chapter is not on the feasability of a microarchitectural implementation.
-We will discuss this topic briefly in chapter \ref{chap:discussion}.
-The instructions and other architectural elements discussed in this chapter are implemented in the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
+We will discuss this topic briefly in chapter \ref{chap:evaluation}.
+The instructions and other architectural elements discussed in this chapter are implemented as an extension to the existing CHERI-RISC-V SAIL model. Appendix \ref{app:saildoc} contains the SAIL implementation for the newly added instructions.
 The full Sail code can be found at \url{https://github.com/exolyte/sail-cheri-riscv}.
 
 \section{Linear Capabilities}
@@ -21,7 +21,7 @@ Figure \ref{fig:linear_capability} shows the layout of a 128-bit CHERI-RISC-V ca
 \label{fig:linear_capability}
 \end{figure}
 
-When the \textit{linear} bit on a capability is set, it cannot be copied in any way. This restriction has influence on a large amount of instructions in the ISA. We describe the necessary modifications to existing instructions as well as the new instructions that were made in the sections below. We identify four different classes of instructions that require attention. Instructions that modify capabilities, instructions that move capbilities, instructions that load and store capabilities and instructions related to the management of linear capabilities. The encoding of the newly added instructions will be discussed in section \ref{sec:sailencoding}, together with the encoding of the instructions added for borrowed capabilities.
+When the \textit{linear} bit on a capability is set, it cannot be copied in any way. This restriction has influence on a large amount of instructions in the ISA. We describe the necessary modifications to existing instructions as well as the new instructions that were made in the sections below. We identify four different classes of instructions that require attention. Instructions that modify capabilities, instructions that move capabilities, instructions that load and store capabilities and instructions related to the management of linear capabilities. The encoding of the newly added instructions will be discussed in section \ref{sec:sailencoding}, together with the encoding of the instructions added for borrowed capabilities.
 
 \subsection{Instructions with Modification Semantics}
 \begin{table}[h]
@@ -50,8 +50,7 @@ When the \textit{linear} bit on a capability is set, it cannot be copied in any 
 \label{table:lininstmod}
 \end{table}
 The first set of instructions are a class of instructions that modify existing capabilities. These instructions are normally allowed to have a destination register that is different from their capability source register. This is analogous to most normal RISC-V instructions where the destination register can also be different from the source. This design makes sense in most cases, but it poses difficulties for linear capabilities. The most obvious linearity violation is an update to a capability that does not even modify the capability. A simple example of this would be the removal of a permission that was not present on the source capability. This results in the capability being copied unmodified from the source to the destination register which is an obvious violation of linearity.
-
-However, even modifications to a capability usually constitute a linearity violation. When using capabilities as pointers to a section of memory, linearity is usually used as a means of preventing the existence of multiple capabilities with access to the same resource. This results in the linear capability having exclusive access to the resource. Any instruction that produces a modified capability that points to the same memory section as the source capability or a subset of it can potentially violate linearity.
+However, even modifications to a capability usually constitute a linearity violation since the modified capability still points to the same memory region.
 
 To prevent these violations of linearity, we have chosen to modify the existing CHERI instructions with modification semantics to raise a hardware exception when they try to output the modified capability to a different register than the register of the source capability if the source capability is linear. This prevents capabilities from being copied as the source capability will always be overwritten by the modified capability. It is the responsibility of the compiler to make sure that the destination register equals the source register when trying to modify a linear capability.
 
@@ -77,18 +76,18 @@ To go along with the changes to the instructions, an extra exception type named 
 
 A second set of instructions consists of instructions that are meant to move capabilities between (special) registers. Using the approach from the previous section where the destination register must equal the source register is not an option here as this would defeat the purpose of these instructions.
 
-The most simple of these instructions is the \textit{CMove} instruction which simply moves a capability from the \textit{cs1} to the \textit{cd}. This move is essentially a copy since the instruction does not clear the source register. To prevent this violation of linearity we have opted to clear the tag of \textit{cs1} if the capability that is being moved is linear. This invalidates the capability in \textit{cs1}. While clearing  \textit{cs1} seems like a straightforward and simple operation, this requires writing to multiple registers in one instruction and might pose a microarchitectural challenge. Some of the other instructions described in this section use the same approach.
+The most simple of these instructions is the \textit{CMove} instruction which simply moves a capability from \textit{cs1} to \textit{cd}. This move is essentially a copy since the instruction does not clear the source register. To prevent this violation of linearity we have opted to clear the tag of \textit{cs1} if the capability that is being moved is linear. This invalidates the capability in \textit{cs1}. While clearing  \textit{cs1} seems like a straightforward and simple operation, this requires writing to multiple registers in one instruction and might pose a microarchitectural challenge. Some of the other instructions described in this section use the same approach.
 
-The \textit{CInvoke} instruction described in section \ref{sec:sealed} places the capability in \textit{cs1} in the PCC and moves the capability in the \textit{cs2} to \textit{C31}. Both source registers for this instruction have the opportunity to violate linearity. For the first source capability, this is solved like the other instructions in this section: if it is linear, the tag of \textit{cs1} will be cleared. For the second source capability the linearity violation is prevented by raising a hardware exception if the second source capability is linear and the \textit{cs2} is not equal to \textit{C31}. This is analogous to the instructions in the previous section.
+The \textit{CInvoke} instruction described in section \ref{sec:sealed} places the capability in \textit{cs1} in the PCC and moves the capability in \textit{cs2} to \textit{C31}. Both source registers for this instruction have the opportunity to violate linearity. For the capability in \textit{cs1}, this is solved like the other instructions in this section: if it is linear, the tag of \textit{cs1} will be cleared. For the capability in \textit{cs2} the linearity violation is prevented by raising a hardware exception if the capability in \textit{cs2} is linear and \textit{cs2} is not equal to \textit{C31}. This is analogous to the instructions in the previous section.
 
 The \textit{CJALR} instruction copies the capability in the PCC special register to the \textit{cd} and replaces it with the capability in \textit{cs1}. If the capability in \textit{cs1} is linear, \textit{cd} is required to be equal to \textit{cs1}.
 
-The \textit{CSpecialRW} instruction copies the capability in the specified special register to \textit{cd} and replaces it with the capability in the \textit{cs1}. If the capability in \textit{cs1} is equal to \textit{C0}, the special register is not replaced. To make this instruction comply with the linearity bit, it was changed to clear the tag of the special register if the capability in it is linear and if \textit{cs1} is equal to \textit{C0}. However, if \textit{cs1} is not equal to \textit{C0}, this becomes unnecessary as the special register is overwritten anyways. In this case there is a linearity violation when \textit{cs1} has its \textit{linear} bit set. Thus the instruction was changed to raise a hardware exception if the capability in  \textit{cs1} is linear and \textit{cd} does not equal \textit{cs1}.
+The \textit{CSpecialRW} instruction copies the capability in the specified special register to \textit{cd} and replaces it with the capability in \textit{cs1}. If \textit{cs1} is equal to \textit{C0}, the special register is not replaced. To make this instruction comply with the linearity bit, it was changed to clear the tag of the special register if the capability in it is linear and if \textit{cs1} is equal to \textit{C0}. However, if \textit{cs1} is not equal to \textit{C0}, this becomes unnecessary as the special register is overwritten anyways. In this case there is a linearity violation when \textit{cs1} has its \textit{linear} bit set. Thus the instruction was changed to raise a hardware exception if the capability in  \textit{cs1} is linear and \textit{cd} does not equal \textit{cs1}.
 
 The \textit{AUIPCC} instruction copies the capability in the PCC to a regular register. For this instruction we chose to clear the tag on \textit{cd} if the capability in the PCC has it \textit{linear} bit set and to not modify the capability in the PCC. This is consistent with CHERI's design of not letting software manipulate the PCC directly.
 
 \subsection{Load \& Store Instructions}
-A third set of instructions that need to be modified are load and store instructions, specifically those dedicated to loading and storing capabilities. We follow the suggestion in the CHERI specification and introduce new load and store instructions to load and store linear capabilities as well as modify existing load and store instructions to respect linearity. Table \ref{table:loadstoreinst} contains the modified and added instructions.
+A third set of instructions that need to be modified are load and store instructions, specifically those dedicated to loading and storing capabilities. We follow the suggestion in the CHERI specification and introduce new load and store instructions to load and store linear capabilities as well as modify existing load and store instructions to respect linearity. Table \ref{table:loadstoreinst} contains the modified instructions while the added instructions can be found in table \ref{table:linloadstoreinst}.
 
 \begin{table}[h]
 \centering
@@ -101,13 +100,13 @@ A third set of instructions that need to be modified are load and store instruct
  Capability & LoadCapCap(cd, cs1) & StoreCapCap(cs2, cs1) \\
 \hline
 \end{tabular}
-\caption{Load \& Store Instructions}
+\caption{Load \& store instructions.}
 \label{table:loadstoreinst}
 \end{table}
 
 Load instructions were modified to clear the tag of the destination register if the loaded capability has its \textit{linear} bit set. This means that linear capabilities cannot be loaded from memory through these instructions as they will always become invalid. This approach was taken to avoid having to write to memory depending on the capability that was loaded, simplifying the microarchitectural implementation.
 
-Store instructions were modified to clear the tag of the source register if the stored capability has its \textit{linear} bit set. This means that it is possible to successfully store linear capabilities through regular store instructions, in contrast to load instructions. The reason for this design is that clearing the tag on a register conditioned on the capability in that register is much cheaper than clearing a tag in memory conditioned on a loaded capability as is the case with load instructions.
+Store instructions were modified to clear the tag of the source register if the stored capability has its \textit{linear} bit set. This means that it is possible to successfully store linear capabilities through regular store instructions, in contrast to load instructions. The reason for this design is that clearing the tag on a register conditioned on the capability in that register is much cheaper than clearing a tag in memory conditioned on the loaded capability as is the case with load instructions.
 
 \begin{table}[h]
 \centering
@@ -120,13 +119,13 @@ Store instructions were modified to clear the tag of the source register if the 
  Capability & LinearLoadCapCap(cd, cs1) & LinearStoreCapCap(cs2, cs1) \\
 \hline
 \end{tabular}
-\caption{Linear Load \& Store Instructions}
+\caption{Linear load \& store instructions.}
 \label{table:linloadstoreinst}
 \end{table}
 
-Because linear capabilities cannot be successfully loaded from memory through regular load instructions, a new linear load instruction is necessary. This is the newly introduced \textit{LinearLoadCapCap} which loads a capability from memory to \textit{cd} based on the \textit{address} field of the capability in \textit{cs1}. Loading a capability in this manner will always clear the tag in memory of the loaded capability, regardless of whether it has its \textit{linear} bit set. This unconditional write avoids the issue with conditional writes that was encountered with the regular load instructions. As seen in table \ref{table:linloadstoreinst}, we chose to only introduce an instruction that loads capabilities based on the \textit{address} field of a capability as opposed to including instructions that load capabilities based on the DDC or an immediate. This decision was made to save on instruction encoding space, but might cause a performance impact.
+Because linear capabilities cannot be successfully loaded from memory through regular load instructions, a new linear load instruction is necessary. This is the newly introduced \textit{LinearLoadCapCap} which loads a capability from memory into \textit{cd} based on the \textit{address} field of the capability in \textit{cs1}. Loading a capability in this manner will always clear the tag of the loaded capability in memory, regardless of whether it has its \textit{linear} bit set. This unconditional write avoids the issue with conditional writes that was encountered with the regular load instructions. As seen in table \ref{table:linloadstoreinst}, we chose to only introduce an instruction that loads capabilities based on the \textit{address} field of a capability as opposed to including instructions that load capabilities based on the DDC or an immediate. This decision was made to save on instruction encoding space, but might cause a performance impact.
 
-The new \textit{LinearStoreCapCap} instruction is the store equivalent of the \textit{LinearLoadCapCap} instruction. It stores the capability in \textit{cs1} in memory based on the \textit{address} field of the capability in the \textit{cs2} and unconditionally clears the tag of \textit{cs1}. This instruction is not strictly necessary as linear capabilities can be successfully stored by regular store instructions, but the presence of this instruction adds symmetry between linear load and store instructions.
+The new \textit{LinearStoreCapCap} instruction is the store equivalent of the \textit{LinearLoadCapCap} instruction. It stores the capability in \textit{cs1} in memory based on the \textit{address} field of the capability in \textit{cs2} and unconditionally clears the tag of \textit{cs1}. This instruction is not strictly necessary as linear capabilities can be successfully stored by regular store instructions, but the presence of this instruction adds symmetry between linear load and store instructions.
 
 \subsection{Linearity Management Instructions}
 \label{sec:lininsts}
@@ -140,24 +139,25 @@ The new \textit{LinearStoreCapCap} instruction is the store equivalent of the \t
  CMergeCap(cd, cs1, cs2) \\
 \hline
 \end{tabular}
-\caption{Management instructions linear capabilities.}
+\caption{Management instructions for linear capabilities.}
 \label{table:lininstmanag}
 \end{table}
 
 Finally, two new instructions were added to inspect and manipulate a capability's \textit{linear} bit and two new instructions were added to split and merge linear capabilities. These split and merge instructions will also be useful for borrowed capabilies as shown in section \ref{sec:borrowmodinsts}.
 
-The \textit{CGetLinear} instruction sets the least significant bit of the integer in \textit{rd} to the same value as the \textit{linear} bit of the capability in \textit{cs1} and clears all the other bits of the integer. This behavior is analogous to the already existing capability field inspection instructions such as \textit{CGetPerm}.
+The \textit{CGetLinear} instruction sets the least significant bit of the integer in \textit{rd} to the same value as the \textit{linear} bit of the capability in \textit{cs1} and clears all the other bits of \textit{rd}. This behavior is analogous to the already existing capability field inspection instructions such as \textit{CGetPerm}.
 
 The \textit{CMakeLinear} instruction copies the capability in \textit{cs1} to \textit{cd} and sets its \textit{linear} bit. This irreversibly\footnote{As part of the design of borrowed capabilities we will provide a controlled way to break linearity for some capabilities.} makes a capability linear to ensure that it cannot be copied.
-In a setting where there is mutual distrust, linear capabilities could be used to assure a callee that its caller does not hold a copy of the capability and vice versa that a callee did not make a copy when the linear capability gets returned to its caller
+In a setting where there is mutual distrust, linear capabilities could be used to assure a callee that its caller does not hold a copy of the capability and vice versa that a callee did not make a copy when the linear capability gets returned to its caller.
 In this case, the \textit{CMakeLinear} instruction should be privileged so that a caller cannot make a copy of a capability before making it linear and passing it on to a callee.
 There may be applications of linear capabilities that require unsetting or overriding the \textit{linear} bit on a capability, but for the purposes of this thesis, the irreversible \textit{CMakeLinear} operation is sufficient.
 
-The \textit{CSplitCap} instruction splits the capability in the \textit{cs1} in two with the boundaries of both parts determined by the integer offset specified in \textit{cs2}. After the execution of this instruction, the top of the capability in the \textit{cs1} is changed to its base plus the specified offset and \textit{cd} holds a copy of the capability in the \textit{cs1} with its base set to the original base plus the specified offset plus one. This instruction is intended to split linear capabilities but can also be used on other unsealed capabilities. Because this instruction writes to multiple registers, it might be hard to implement in microarchitecture.
+The \textit{CSplitCap} instruction splits the capability in \textit{cs1} in two with the boundaries of both parts determined by the integer offset specified in \textit{cs2}.
+After the execution of this instruction, the base of the capability in \textit{cs1} is changed to its base plus the specified offset and \textit{cd} holds a copy of the capability in \textit{cs1} with its top set to the original base plus the specified offset. This instruction is intended to split linear capabilities but can also be used on other unsealed capabilities. Because this instruction writes to multiple registers, it might be hard to implement in microarchitecture.
 
 The \textit{CMergeCap} instruction reverts the split from \textit{CSplitCap}. It requires two capabilities pointing to contiguous memory sections in its source registers and joins them together to form a single capability that points to the entire memory section. This instruction clears the tags on its source registers. Like \textit{CSplitCap}, this instruction is intended to be used with linear capabilities, but can also be used on other unsealed capabilities.
 
-The existence of the \textit{CSplitCap} and \textit{CSplitMerge} instructions allows software to for example split a linear capability pointing to a struct or array as to obtain a linear reference to a specific field of the struct or array. The software can then delegate this specific field to an untrusted callee, avoiding the need of giving the callee access to the entire struct or array.
+The existence of the \textit{CSplitCap} and \textit{CMergeCap} instructions allows software to for example split a linear capability pointing to a struct or array as to obtain a linear reference to a specific field of the struct or array. The software can then delegate this specific field to an untrusted callee, avoiding the need of giving the callee access to the entire struct or array.
 
 \section{Borrowed Capabilities}
 In this section we discuss the implementation of the design of borrowed capabilities. We start off with a look at the memory representation of the newly introduced tokens. Next, we describe the newly required architectural elements and finally we expand on the changes needed to existing instructions as well as the definitions of new instructions.
@@ -188,11 +188,14 @@ The \textit{flags} field is unaltered from the regular capability layout.
 
 The \textit{otype} field is always set to the identifier for lifetime tokens: $2^{18} - 3$. This allows both the software and the hardware to confirm whether a capability is a lifetime token by checking its \textit{otype} field.
 
-The $I_E$ bit is always set to 0. This allows us to use the full width of the \textit{B} field which is repurposed to the \textit{fraction} field. The \textit{fraction} field holds the fraction of the lifetime token. A full lifetime token has a fraction of zero. When a full lifetime token is split, two lifetime tokens with fraction 1 are produced. Those lifetime tokens can then be split again, producing lifetime tokens with fraction 2. Lifetime tokens can continue to be split until the maximum value of of the \textit{fraction} field is reached. Since the \textit{fraction} field is 13 bits wide, the theoretical maximum amount of lifetime tokens is $2^{13} - 1=8191$. Two lifetime tokens with the same lifetime id can be merged again if their fractions are equal and not zero. The merging of two identical lifetime tokens results in a lifetime token with its \textit{fraction} field decremented.
+The $I_E$ bit is always set to 0. This allows us to use the full width of the \textit{B} field which is repurposed to the \textit{fraction} field. The \textit{fraction} field holds the fraction of the lifetime token. As mentioned in chapter \ref{chap:design}, a full lifetime token has a \textit{fraction} field of zero which is incremented on both token fractions when the token is split. Lifetime tokens can continue to be split until the maximum value of the \textit{fraction} field is reached. Since the \textit{fraction} field is 13 bits wide, the theoretical maximum amount of lifetime token fractions is $2^{2^{13} - 1}=2^{8191}$. %TODO is this correct?
+This is of course an absurdly large value and shows that the fraction field could be a lot smaller.
+Two identical lifetime tokens can be merged again which results in a lifetime token with a decremented \textit{fraction} field.
 
 The \textit{T} field is not used in lifetime tokens and is set to zero.
 
-The previous \textit{a} field is split up into three different fields to hold a lifetime token's own lifetime id, the id of its parent and the id of its child. Because each of these fields is 18 bits wide, the bottom word of a capability contains 10 unassigned bits. While the necessity of a lifetime token holding its own id is clear, the need for fields to store the parent and child ids might be less obvious. Reborrowing a capability under a new lifetime requires the parent id of the new lifetime to be the lifetime id that the capability was originally borrowed under. This can only be checked if a lifetime token holds the id of its parent. The necessity of the \textit{child id} field arises from the restriction that lifetime tokens cannot be killed while they have a child. This means that there needs to be a way to determine whether a lifetime token has a child as well as a way to modify the lifetime token when its child lifetime is dead. It might seem possible to use a single bit to indicate whether a specified lifetime token has a child and clear that bit through an operation that uses a dead lifetime token with the \textit{parent id} field set to the lifetime id of the specified lifetime token. However, since lifetime tokens can have multiple children in succession, using one bit to track whether a lifetime token has a child is unsufficient as this would allow old children to be used to remove the bit. Storing the entire lifetime id of the child lifetime in the \textit{child id} field solves this problem.
+The previous \textit{a} field is split up into three different fields to hold a lifetime token's own lifetime id, the id of its parent and the id of its child. Because each of these fields is 18 bits wide, the bottom word of a capability contains 10 unassigned bits. While the necessity of a lifetime token holding its own id is clear, the need for fields to store the parent and child ids might be less obvious. Reborrowing a capability under a new lifetime requires the parent id of the new lifetime to be equal to the lifetime id that the capability was originally borrowed under.
+This can only be checked if a lifetime token holds the id of its parent. The necessity of the \textit{child id} field arises from the restriction that lifetime tokens cannot be killed while they have a child. This means that there needs to be a way to determine whether a lifetime token has a child as well as a way to modify the lifetime token when its child lifetime is dead. It might seem possible to use a single bit to indicate whether a specified lifetime token has a child and clear that bit through an operation that uses a dead lifetime token with the \textit{parent id} field set to the lifetime id of the specified lifetime token. However, since lifetime tokens can have multiple children in succession, using one bit to track whether a lifetime token has a child is insufficient as this would allow old children to be used to remove the bit. Storing the entire lifetime id of the child lifetime in the \textit{child id} field solves this problem.
 
 \subsubsection{Index Tokens}
 Figure \ref{fig:index_token} shows the layout of an index token.
@@ -224,7 +227,7 @@ The previous \textit{a} field is split up into two different fields to hold the 
 \subsubsection{Memory Capabilities}
 The layout of memory capabilities does not change with the introduction of borrowed capabilities. It remains the same layout that was introduced by linear capabilities in figure \ref{fig:linear_capability}. However, the introduction of borrowed capabilities does make a breaking change with regards to the \textit{otype} field.
 
-Whereas previously almost the full otype range was reserved for code-data pairs, the introduction of borrowed capabilities splits this otype space in two, reserving half of it for use as lifetime ids. This results in three separate otype ranges. The first range, from 0 to $\frac{2^{18}}{2} - 1$ is used for lifetime ids. The first value of zero is not actually used as a valid lifetime id, but exists to represent the absence of a child or parent lifetime in lifetime tokens. The second range, from  $\frac{2^{18}}{2}$ to $2^{18} - 17$ is used for code-data pairs. The last range, from $2^{18} - 16$ to $2^{18} - 1$ is reserved for specific identifiers such as the lifetime token identifier and the index token identifier as discussed above. Note that borrowed memory capabilities can be identified by the presence of a lifetime id in their \textit{otype} field. Thanks to splitting the otype space in half, this can be accomplished by checking just the first bit of the otype field.
+Whereas previously almost the full otype range was reserved for code-data pairs, the introduction of borrowed capabilities splits this otype space in two, reserving half of it for use as lifetime id's. This results in three separate otype ranges. The first range, from 0 to $\frac{2^{18}}{2} - 1$ is used for lifetime ids. The first value of zero is not actually used as a valid lifetime id, but exists to represent the absence of a child or parent lifetime in lifetime tokens. The second range, from  $\frac{2^{18}}{2}$ to $2^{18} - 17$ is used for code-data pairs. The last range, from $2^{18} - 16$ to $2^{18} - 1$ is reserved for specific identifiers such as the lifetime token identifier and the index token identifier as discussed above. Note that borrowed memory capabilities can be identified by the presence of a lifetime id in their \textit{otype} field. Thanks to splitting the otype space in half, this can be accomplished by checking just the first bit of the otype field.
 
 An alternative to this scheme would be to add an extra bit that determines whether the value held in the \textit{otype} field represents a lifetime id or a code-data pair. While this approach would keep compatibility with the existing CHERI architecture, it would also use the last of the leftover bits and complicate the interpretation of the \textit{otype} field as the interpretation would depend on a separate bit.
 
@@ -236,7 +239,7 @@ Borrowed capabilities require a method to securely generate new lifetime ids. To
 \subsubsection{Borrow Table}
 Borrowed capabilities also require a table to store and retrieve capabilities that are being borrowed. From the perspective of the software, this is an opaque table that stores capabilities when they get borrowed and retrieves them when the software asks to. The only aspect of this table that is exposed to the software is the index of where a capability is stored. We touch upon the implementation of the borrow table in \ref{sec:microarchbt}.
 
-The borrow table has the ability to
+The interface to the borrow table has the ability to
 \begin{itemize}
 \item Find free slots in the table.
 \item Store a capability in a free slot and return the index of the slot in which it was stored.
@@ -275,7 +278,7 @@ Load Instructions & Store Instructions \\
  LinearLoadCapCap(cd, cs1) & LinearStoreCapCap(cs2, cs1) \\
 \hline
 \end{tabular}
-\caption{Modified Load \& Store Instructions}
+\caption{Modified load \& store instructions.}
 \label{table:borrowedderef}
 \end{table}
 
@@ -290,7 +293,7 @@ These instructions need to be modified to dereference borrowed capabilities whic
  CMergeCap(cd, cs1, cs2) \\
 \hline
 \end{tabular}
-\caption{Modified Splitting \& Merging Instructions}
+\caption{Modified splitting \& merging instructions.}
 \label{table:borrowmodsplit}
 \end{table}
 The CSplitCap and CMergeCap instructions introduced in section \ref{sec:lininsts} need to be modified to allow the splitting of sealed capabilities if they are borrowed capabilities. This instruction can be used to borrow specific fields of a struct or array.
@@ -305,7 +308,7 @@ The CSplitCap and CMergeCap instructions introduced in section \ref{sec:lininsts
  CUnseal(cd, cs1, cs2) \\
 \hline
 \end{tabular}
-\caption{Modified Sealing Instructions}
+\caption{Modified sealing instructions.}
 \label{table:borrowmodseal}
 \end{table}
 
@@ -322,7 +325,7 @@ The instructions that relate to code-data pairs such as \textit{CSeal}, \textit{
  CSetAddr(cd, cs1, rs2) \\
 \hline
 \end{tabular}
-\caption{Modified Load \& Store Instructions}
+\caption{Modified offset modification instructions.}
 \label{table:borrowmodoffset}
 \end{table}
 The instructions that relate to changing offsets need to be modified in order for borrowed capabilities to be able to change their offset. The instructions in question are \textit{CIncOffset}, \textit{CIncOffsetImmediate}, \textit{CSetOffset} and \textit{CSetAddr}. These instructions all change the offset on a capability and usually raise a hardware exception when software tries to change the offset on a sealed capability. The reason that we want to change the offset on borrowed capabilities is to be able to point to any element in a struct or array for a borrowed capability that points to such a data structure.
@@ -343,7 +346,7 @@ Eight new instructions were added for borrowed capabilities. Five of these are r
  CMergeLT(cd, cs1, cs2) \\
 \hline
 \end{tabular}
-\caption{Lifetime Managment Instructions}
+\caption{Lifetime managment instructions.}
 \label{table:borrowedinstslifetime}
 \end{table}
 
@@ -353,7 +356,7 @@ The \textit{CKillToken} instruction kills a lifetime token by unsetting its line
 
 The \textit{CUnlockToken} instruction removes the child from the lifetime token in \textit{cs1} given that \textit{cs2} contains a dead lifetime token with a \textit{lifetime id} field equal to the \textit{child id} field of the token in \textit{cs1}. To prevent duplication of lifetime tokens, \textit{cd} has to be equal to \textit{cs1}.
 
-The \textit{CSplitLT} instruction splits the lifetime token in \textit{cs1} and places the fractions in \textit{cd} and \textit{cs1}. As discribed in section \ref{sec:ltlayout}, splitting a lifetime token increments the \textit{fraction} field on both parts. Trying to split a lifetime token with the highest allowed fraction value of 8191 will result in a hardware exception being raised.
+The \textit{CSplitLT} instruction splits the lifetime token in \textit{cs1} and places the fractions in \textit{cd} and \textit{cs1}. As discribed in chapter \ref{chap:design}, splitting a lifetime token increments the \textit{fraction} field on both parts. Trying to split a lifetime token with the highest allowed fraction value of 8191 will result in a hardware exception being raised.
 
 The \textit{CMergeLT} instruction merges two lifetime fractions in \textit{cs1} and \textit{cs2} back together to a single lifetime token by decrementing the \textit{fraction} field of \textit{cs1} and placing it in \textit{cd}. In order to be merged, the two lifetime fractions are required to be equal in every field. This instruction requires \textit{cd} to be equal to \textit{cs1} and will clear the tag on \textit{cs2}.
 
@@ -373,9 +376,12 @@ The \textit{CMergeLT} instruction merges two lifetime fractions in \textit{cs1} 
 \label{table:borrowedinstsborrow}
 \end{table}
 
-The \textit{CBorrowImmut} instruction stores the capability in \textit{cs1} in the borrow table and then places a borrowed capability derived from it in \textit{cs1}. This borrowed capability is a copy of the capability in \textit{cs1} with its linear bit unset, the \textit{otype} field set to the \textit{lifetime id} field of the lifetime token in \textit{cs2} and with its \textit{permissions} field set to the bitwise and of the previous permissions and \textit{000000010101}, clearing all permissions except for \textit{Global}, \textit{Permit\_Load} and \textit{Permit\_Load\_Capability}. This instruction also creates an index token with its \textit{lifetime id} field set to the \textit{lifetime id} field of the lifetime token in \textit{cs2} and with its \textit{index} field set to the index in the borrow table in which the capability in \textit{cs1} was stored.
+The \textit{CBorrowImmut} instruction stores the capability in \textit{cs1} in the borrow table and then places a borrowed capability derived from it in \textit{cs1}. This borrowed capability is a copy of the capability in \textit{cs1} with its linear bit unset, the \textit{otype} field set to the \textit{lifetime id} field of the lifetime token in \textit{cs2} and with its \textit{permissions} field set to the bitwise and of the previous permissions and \textit{000000010101}, clearing all permissions except for \textit{Global}, \textit{Permit\_Load} and \textit{Permit\_Load\_Capability}.
+If the original capability in \textit{cs1} is a borrowed capability, its \textit{otype} field has to match the \textit{parent id} field of the lifetime token in \textit{cs2}.
+This instruction also creates an index token with its \textit{lifetime id} field set to the \textit{lifetime id} field of the lifetime token in \textit{cs2} and with its \textit{index} field set to the index in the borrow table in which the capability in \textit{cs1} was stored.
+If \textit{cd} is equal to \textit{C0}, the capability is not stored in the borrow table and no index token is produced.
 
-The \textit{CBorrowMut} instruction works the same way as the \textit{CBorrowImmut} instruction with only a difference in the \textit{linear} field and the \textit{permissions} field of the resulting borrowed capability. With this instruction the linear bit on the borrowed capability remains set and the \textit{permissions} field is obtained by a bitwise and with the previous permissions and \textit{000001111101}, clearing all permissions except for \textit{Global}, \textit{Permit\_Load}, \textit{Permit\_Store}, \textit{Permit\_Load\_Capability}, \textit{Permit\_Store\_Capability} and \textit{Permit\_Store\_Local\_Capability}.
+The \textit{CBorrowMut} instruction works the same way as the \textit{CBorrowImmut} instruction with only a difference in the \textit{linear} field and the \textit{permissions} field of the resulting borrowed capability. With this instruction, the linear bit on the borrowed capability remains set and the \textit{permissions} field is obtained by a bitwise and with the previous permissions and \textit{000001111101}, clearing all permissions except for \textit{Global}, \textit{Permit\_Load}, \textit{Permit\_Store}, \textit{Permit\_Load\_Capability}, \textit{Permit\_Store\_Capability} and \textit{Permit\_Store\_Local\_Capability}.
 
 The \textit{CRetrieveIndex} instruction retrieves the capability in the borrow table at the index indicated by the \textit{index} field of the index token in \textit{cs1}. This requires a dead lifetime token in \textit{cs2} with a \textit{lifetime id} field equal to the \textit{lifetime id} field of the index token in \textit{cs1}. This instruction requires that \textit{cd} is equal to \textit{cs1} to ensure that the software does not have access to the index token after this instruction.
 
@@ -434,7 +440,7 @@ LinearStoreCapCap(cs2, cs1) <->
 0b1111100 @ cs2 @ cs1 @ 0b000 @ 0b01101 @ 0b1011011
 
 \end{verbatim}
-\caption{The mapping between Sail functions and binary encodings}
+\caption{The mapping between Sail functions and their binary encodings.}
 \label{code:instencodings}
 \end{figure}
 
