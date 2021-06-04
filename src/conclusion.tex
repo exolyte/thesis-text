@@ -10,8 +10,8 @@ Finally we wrote sample assembly programs that mirror specific Rust programs to 
 The assembly programs can be assembled by the LLVM assembler and run in the emulator that is produced by Sail.
 From the assembly programs we can conclude that borrowed capabilities do indeed have semantics and guarantees that are similar to those that Rust provides.
 
-There are some outstanding problems with borrowed capabilities that prevent them from being used as the target of a secure Rust compiler such as the behavior relating to nested references.
-Nevertheless, we think borrowed capabilities are significant step towards supporting Rust's ownership and borrowing system at the assembly level.
+There are some outstanding problems with borrowed capabilities that prevent them from being used as the target of a secure Rust compiler such as the behavior related to nested references.
+Nevertheless, we think borrowed capabilities are a significant step towards supporting Rust's ownership and borrowing system at the assembly level.
 While fitting the design of borrowed capabilities into CHERI is fairly simple and does not require expensive changes to CHERI, actually implementing borrowed capabilities in hardware could have significant extra costs.
 The main limitations of borrowed capabilities such as lifetime id exhaustion may be mitigated or worked around.
 

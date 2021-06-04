@@ -1,6 +1,6 @@
 \chapter{Discussion}
 \label{chap:discussion}
-In this chapter we discuss some considerations and shortcomings of our design of borrowed capabilities.
+In this chapter we discuss some considerations related to our design of borrowed capabilities.
 
 \section{Semantic Lifetimes}
 In section \ref{sec:semantic_lifetimes} we explained how Rust detects the last usage of a borrow in order to make the lifetime as short as possible.
@@ -8,6 +8,19 @@ This is a way to make Rust code more flexible and readable, but has its limitati
 In essence, borrowed capabilities do something similar by making lifetimes dynamic.
 With dynamic lifetimes, the specific lifetimes of certain borrows do not have to be known at compile time which makes them more flexible than Rust's semantic lifetimes.
 This would create opportunities to make Rust code more flexible as borrowed capabilities would enforce Rust's guarantees dynamically.
+
+\section{Practical Considerations}
+\subsection{Borrow Table}
+\label{sec:microarchbt}
+Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory.
+Such a mechanism used to be present in older CHERI versions in the CReturn instruction \cite{7723791}.
+An alternative would be to trap to a routine in ROM which would remove the need for software to trust the kernel.
+
+\subsection{Borrowed Capabilities in Software}
+We gave a design of borrowed capabilities that was completely implemented in hardware which is of course beneficial for performance and makes it so that software only needs to trust the hardware, not a kernel.
+It would be possible to make a design for borrowed capabilities in software instead, which would only need minimal changes to CHERI and to hardware.
+In this case, all of the instructions for borrowed capabilities would be implemented as system calls in the kernel which would implement the lifetime counter and borrow table and would use existing instructions such as \textit{CSeal} to set the otype of capabilities for example.
+It's worth pointing out that in this case there would still need to be changes to CHERI in order to deal with the split up otype space, restrictions on the dereferencing of borrowed capabilities and the layout of lifetime and index tokens.
 
 \section{Performance}
 As mentioned in chapter \ref{chap:evaluation} we do not evaluate our design on performance, because this is hard without actual hardware.
@@ -18,22 +31,25 @@ This CHERI processor would give a much better idea about the performance impact 
 
 As for borrowed capabilities, one performance measure that we could have used to evaluate our design is a sort of test that counts the amount of additional executed instructions required for a program that uses borrowed capabilities.
 This was not attempted due to a lack of time and would be complicated because it requires a non-trivial assembly program with a borrowed capability version and a baseline version for comparison.
-This might also not give a very accurate picture as some instructions are more expensive than others.
-Any operation that requires an access to the borrow table would probably require accessing memory which is much more expensive than a simple move instruction for example.
-This problem is further exacerbated due to the fact that the cost of accessing memory varies greatly depending on whether the processor cache is used or not.
 
-In general we can say that any operation accessing the borrow table such as the borrow instructions and the \textit{CRetrieveIndex} instruction are probably fairly expensive.
+We could give some sort of qualitative performance analysis for instructions like we did for hardware costs in section \ref{sec:hardwareeval}.
+However, this is quite complicated because we do not have a clear picture of how the borrow table would be implemented.
+If accessing the borrow table would require trapping to some extra software routine, the costs would be an order of magnitude higher than if the borrow table were to be fully implemented in hardware.
+Even in the latter case where accessing the borrow table would presumably have a similar cost to normally accessing memory, costs may vary wildly depending on things like processor caches.
+
+Some elements of our design about which we can say that they are probably expensive are the following.
+Because lifetime id's need to be unique, accessing the lifetime counter in a multithreaded setting would have to be synchronized and these types of operations are usually expensive.
+Any operation accessing the borrow table such as the borrow instructions and the \textit{CRetrieveIndex} instruction are probably fairly expensive.
 Another source of overhead would be the fact that lifetime tokens need to be in \textit{C31} in order for a borrowed capability to be dereferenced which would result in a lot of extra instructions to move lifetime tokens around.
 
 \section{Borrowed Capabilities for Revocation}
-In this section we discuss borrowed capabilities as a concept that is not tied to Rust's semantics, but as a way to revoke capabilities on CHERI.
+In this section we discuss borrowed capabilities as a concept that is not tied to Rust's semantics, but as a general way to revoke capabilities on CHERI.
 Through this lens, borrowed capabilities allow software to create scopes in the form of lifetime tokens and allow capabilities to be bound to these scopes.
 The revocation problem then shifts to the revocation of lifetimes as opposed to the revocation of individual capabilities.
-Revoking a lifetime works in a similar manner as revoking linear capabilities, but avoids the restrictive copy prohibition on capabilities that linear references have.
-It also avoids the restriction on storing local capabilities in non-write-local memory while still being able to do fine grained revocation of capabilities.
+Revoking a lifetime works in a similar manner as revoking linear capabilities.
 
-Borrowed capabilities follow the ``aliasing XOR mutation'' principle, which means that they offer revocation in a setting where there is mutual distrust between two parties.
-A callee that is given a mutable borrowed capability and a matching lifetime token can be certain that its caller cannot access the resource that the capability points to because the caller's version of the capability is stored away in the borrow table and can only be retrieved by killing the lifetime token that the callee holds.
+Borrowed capabilities follow the ``aliasing XOR mutation'' principle, which means that they can be used for revocation in a setting where there is mutual distrust between two parties.
+A callee that is given a mutably borrowed capability and a matching lifetime token can be certain that its caller cannot access the resource that the capability points to because the caller's version of the capability is stored away in the borrow table and can only be retrieved by killing the lifetime token that the callee holds.
 In the other direction, a caller can be sure that a callee does not have access to a resource anymore when the caller holds the dead lifetime token.
 Something to note is that mutual distrust requires that only linear capabilities can be borrowed since a callee has to be sure no copies of the capability exist.
 ``Aliasing XOR mutation'' also implies the need for two borrow operations because mutable borrows need to be linear.
@@ -59,16 +75,3 @@ This offers a performance increase compared to linear capabilities and might pre
 
 The other advantage over linear capabilities is that borrowed capabilities implement ``aliasing XOR mutation'' whereas linear capabilities simply make aliasing impossible.
 This makes borrowed capabilities a better fit for multithreaded situations.
-
-\section{Practical Considerations}
-\subsection{Borrow Table}
-\label{sec:microarchbt}
-Considering the required size of the borrow table, the most realistic location to store it is in system memory. The management of the table could be implemented by a privileged entity such as the kernel. In this scheme, instructions that need to access the table would trap to the operating system which would then store or retrieve table entries from system memory.
-Such a mechanism used to be present in older CHERI versions in the CReturn instruction \cite{7723791}.
-An alternative would be to trap to a routine in ROM which would remove the need for software to trust the kernel.
-
-\subsection{Borrowed Capabilities in Software}
-We gave a design of borrowed capabilities that was completely implemented in hardware which is of course beneficial for performance and makes it so that software only needs to trust the hardware, not a kernel.
-It would be possible to make a design for borrowed capabilities in software instead, which would only need minimal changes to CHERI and to hardware.
-In this case, all of the instructions for borrowed capabilities would be implemented as system calls in the kernel which would implement the lifetime counter and borrow table and would use existing instructions such as \textit{CSeal} to set the otype of capabilities for example.
-It's worth pointing out that in this case there would still need to be changes to CHERI in order to deal with the split up otype space, restrictions on the dereferencing of borrowed capabilities and the layout of lifetime and index tokens.
